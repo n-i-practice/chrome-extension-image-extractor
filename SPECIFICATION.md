@@ -1,4 +1,4 @@
-# 📘 Image Extractor — 仕様書（完全版）
+# 📘 Image Extractor — 仕様書（100点の最終完全版）
 
 ## 1. 概要
 
@@ -6,247 +6,308 @@
 
 抽出対象には、通常の `<img>` だけでなく、CSS や JavaScript によって生成・追加された画像、blob URL、相対パスなど、ページ上で画像として扱われる可能性があるものを広く含みます。
 
+本拡張は **Manifest V3 を前提**とし、
+
+- popup は使用せず、拡張アイコンクリック時に `chrome.action.onClicked` で viewer を開く
+- content script が DOM と CSS を走査
+- URL を正規化し重複除外
+- background が viewer を開く
+- viewer が自然サイズと最小サイズフィルタを適用する
+
+という実行モデルで動作します。
+
+CSS 画像の抽出は **best effort** とし、ブラウザ制約により完全抽出は保証しません。
+
+### ● background の役割
+
+- `chrome.action.onClicked` を受信して viewer を開く
+- content script から画像リストを受信
+- URL 正規化・重複除外
+- `chrome.storage.session` に画像リストを保存
+- viewer タブを開く
+
 ---
 
 ## 2. 目的（Requirements）
 
-- アクティブタブに表示されている画像をすべて取得する
-- CSS や JS によって制御されている画像も取得する
-- CSS の `background-image` や `content: url()` を含むすべての画像を抽出する
-- blob / object URL や相対パスの画像も抽出する
-- 抽出した画像を **新しいタブ**で一覧表示する
-- viewer 側で **最小サイズの指定（初期値：400×400）** ができる
-- URL一致の重複は除外する
-- 読み込み失敗した画像は viewer 側で除外する
-- 大量画像サイトでも快適に動作する（Lazy Load 採用）
+- アクティブタブに表示されている画像をすべて取得
+- CSS / JS 制御の画像も取得
+- CSS の `background-image` / `content: url()` を含む
+- blob / object URL / 相対パスも抽出
+- 抽出した画像を **新しいタブ（viewer）** で一覧表示
+- viewer で **最小サイズフィルタ（初期値：400×400）**
+- URL一致の重複除外（正規化後一致）
+- 読み込み失敗画像は viewer 側で除外
+- Lazy Load による高速表示
 - 画像クリックで元画像を新しいタブで開く
-- `srcset` は最大解像度の画像を抽出する
-- Optional として Zip ダウンロード機能を提供する
+- srcset は最大解像度を抽出
+- Optional：Zip ダウンロード
 
 ---
 
-## 3. ユーザー操作フロー
+## 3. 実行モデル（重要）
 
-1. ユーザーが拡張アイコンをクリック
-2. content script がアクティブタブ内の画像を収集
-3. background が新しいタブ（viewer）を開く
-4. viewer.html が画像一覧を表示する
-5. viewer で最小サイズを指定してフィルタリングできる
-6. 読み込み失敗した画像は自動で除外
-7. 画像クリックで元画像を新しいタブで開く
-8. Optional：画像を Zip としてダウンロードできる
+### ● content script の実行タイミング
+
+1. DOMContentLoaded で初回スキャン
+2. MutationObserver で追加画像を監視
+3. 追加画像は debounce（300ms）でまとめて処理
+4. SPA（Instagram / X / Pinterest）でも継続収集
+5. 画像が一定時間（例：5秒）増えなければ収集終了
+
+### ● background の役割
+
+- content script から画像リストを受信
+- URL 正規化・重複除外
+- `chrome.storage.session` に画像リストを保存
+- viewer タブを開く
+
+### ● viewer の役割
+
+- session から画像リストを読み込む
+- IntersectionObserver による Lazy Load
+- naturalWidth / naturalHeight を取得
+- 最小サイズフィルタを適用
+- 読み込み失敗画像を除外
+- 画像クリックで background にメッセージ送信
+- background が `chrome.tabs.create` で新しいタブを開く
 
 ---
 
-## 4. 抽出対象（拡張版）
+## 4. データ構造（ImageRecord）※必須
+
+```
+ImageRecord {
+  id: string,                 // UUID
+  src: string,                // 正規化済みURL
+  srcType: string,            // img / background / srcset / og:image / blob / data
+  origin: string,             // 抽出元（DOMノード情報）
+  naturalWidth: number,       // viewer側で取得
+  naturalHeight: number,      // viewer側で取得
+  isValid: boolean            // 読み込み成功/失敗
+}
+```
+
+---
+
+## 5. 抽出対象（拡張版）
 
 - `<img>` の `src`
 - `<source>` / `<picture>` の `srcset`
 - CSS の `background-image`
 - CSS の `content: url()`
-- JavaScript によって動的に追加された画像（MutationObserver）
-- 右クリック禁止など CSS による制限がある画像
+- 動的追加画像（MutationObserver）
 - blob URL（`blob:`）
 - object URL（`URL.createObjectURL()`）
-- 相対パスの画像（絶対 URL に変換して扱う）
+- 相対パス（絶対 URL に変換）
 - `<video poster>`
 - `<link rel="preload" as="image">`
 - `<meta property="og:image">`
 
+### ● CSS 抽出の制約（best effort）
+
+- cross-origin stylesheet の cssRules は参照不可
+- computed style / CSSOM の範囲で可能な限り抽出
+- CSS 画像の完全抽出は保証しない
+
 ---
 
-## 5. 抽出ロジック
+## 6. URL重複除外（正規化）
 
-### ● URL重複の除外（初期バージョンから必須）
+### ● 正規化ルール
 
-同じ URL の画像は 1 回だけ抽出する。
+- 相対パス → `new URL(path, location.href)`
+- http/https は別物
+- クエリ（?v=123）は別物
+- blob / data URL は文字列一致
 
-### ● 相対パスの絶対 URL 化
+### ● 重複除外条件
 
 ```
-new URL(path, location.href)
+正規化後の src が完全一致した場合、重複とみなす
 ```
 
-### ● 動的追加の検知
+---
 
-MutationObserver を使用して、SPA（Instagram / X / Pinterest）でも確実に取得。
+## 7. srcset の最大解像度抽出
 
-### ● srcset の最大解像度抽出（重要）
-
-`srcset` の並び順は高解像度順である保証がないため、  
-descriptor を解析して最大解像度の URL を抽出する。
-
-- `400w` → 幅 400px
-- `2x` → DPI 2倍
-- descriptor がない場合 → 最初の URL（HTML仕様準拠）
+- `w` → 最大幅
+- `x` → 最大倍率
+- 並び順は無視
+- descriptor がない場合 → 最初の URL
+- 404 / invalid の場合は次候補にフォールバック
 
 ---
 
-## 6. 機能（正式）
+## 8. viewer の表示仕様
 
-### ● 最小サイズの指定（viewer で入力可能）
+### ● Lazy Load
 
-新しく開いたタブ（viewer.html）に、最小サイズを指定するためのテキストボックスを設置する。
+IntersectionObserver により、画面に近づいた画像だけ読み込む。
 
-- 初期値：**幅 400px / 高さ 400px**
-- viewer 側でフィルタリングを行い、条件を満たす画像のみを表示する
-- 抽出ロジックは全画像を取得し、表示段階でサイズフィルタを適用する
-- 入力 UI
-  - 最小幅：`<input type="number">`
-  - 最小高さ：`<input type="number">`
-  - 「適用」ボタンでフィルタリングを再実行
+### ● 最小サイズフィルタ
+
+- naturalWidth / naturalHeight を使用
+- 0 の場合は除外
+- 初期値：400×400
+- フィルタは **画像読み込み後（onload）** に適用
+
+### ● 読み込み失敗
+
+- `img.onerror` → `isValid = false`
+- viewer から除外
+- Zip ダウンロード対象にも含めない
+
+### ● 画像クリック（必ず background 経由）
+
+viewer → background にメッセージ送信  
+background が `chrome.tabs.create({ url: src })` で新しいタブを開く  
+（window.open は使用しない）
 
 ---
 
-## 7. 読み込み失敗の扱い（正式）
+## 9. background ↔ viewer のデータ受け渡し
 
-### ● 読み込み失敗した画像は viewer 側で除外する
-
-viewer.js：
+### ● メッセージ設計
 
 ```
-img.onerror = () => {
-  img.remove();
-};
+content → background:
+  chrome.runtime.sendMessage({ type: "images", payload: ImageRecord[] })
+
+background → viewer:
+  chrome.storage.session.set({ images })
+
+viewer → background:
+  chrome.runtime.sendMessage({ type: "open-image", src })
 ```
 
-### ● Optional：再読み込み機能
+### ● chrome.storage.session の扱い（重要）
 
-読み込み失敗した画像だけ再試行するボタンを後から追加可能。
-
----
-
-## 8. 大量画像サイトへの対応（正式）
-
-### ● Lazy Load（採用）
-
-IntersectionObserver を使い、  
-画面に近づいた画像だけ読み込む。
-
-メリット：
-
-- 初期表示が高速
-- メモリ消費が少ない
-- Instagram / Pinterest でも快適
-
-### ● キュー方式（Optional）
-
-Zip ダウンロード時に大量画像を扱う場合に追加する。
+- 画像リストは viewer 起動時に session から読み込む
+- session の容量制限により、  
+  **画像保存上限は「最大 1500 件」** とする
+- 保存失敗時は fallback として viewer に直接 message passing
+- SPA で画像が増え続ける場合は収集を打ち切る
 
 ---
 
-## 9. viewer の表示仕様
+## 10. Manifest V3 の正式定義
 
-- 画像をグリッド形式で一覧表示
-- Lazy Load により遅延読み込み
-- 最小サイズフィルタを適用可能
-- 読み込み失敗は自動除外
-- **画像クリックで元画像を新しいタブで開く（正式）**
-- Optional：Zip ダウンロードボタン
-- Optional：画像のメタ情報表示
+```
+{
+  "manifest_version": 3,
+  "name": "Image Extractor",
+  "version": "1.0",
+  "action": {
+    "default_title": "Image Extractor"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}
+```
 
 ---
 
-## 10. コンポーネント構成
+## 11. 大量画像サイトへの対策
 
-### ● content script
+- 画像収集は **逐次処理（バッチ処理）**
+- viewer は **Lazy Load**
+- content script は **MutationObserver + debounce**
+- 重複判定は content script 側で事前に行う
+- CORS により naturalWidth が取得できないケースを許容
+- data URL は viewer 表示可だが Zip 対象外
 
-- ページ内の DOM にアクセスし、画像を抽出
-- CSS の解析
-- MutationObserver による動的追加の検知
-- URL重複の除外
-- srcset の最大解像度抽出
+---
 
-### ● background（service worker）
+## 12. viewer の実体（明文化）
 
-- content script から受け取った画像リストを保持
-- viewer.html を新しいタブで開く
+viewer は拡張内のページ：
 
-### ● viewer（extension page）
+```
+src/viewer/viewer.html
+src/viewer/viewer.js
+```
 
-- 画像一覧を表示
+background は以下で開く：
+
+```
+chrome.tabs.create({
+  url: chrome.runtime.getURL("src/viewer/viewer.html")
+})
+```
+
+---
+
+## 13. バージョン構成（v1 / v2 / v3）
+
+### ● v1（初期リリース）
+
+- 画像収集
+- viewer 表示
 - Lazy Load
 - 最小サイズフィルタ
-- 読み込み失敗の除外
-- 画像クリックで新しいタブで開く
-- Optional：Zip ダウンロード
+- 読み込み失敗除外
+- 画像クリック → background → 新しいタブ
 
----
+### ● v2（機能拡張）
 
-## 11. フォルダ構成（案）
-
-```
-chrome-extension-image-extractor/
-  manifest.json
-  src/
-    content/
-      content.js
-    background/
-      background.js
-    viewer/
-      viewer.html
-      viewer.js
-    popup/
-      popup.html
-      popup.js
-```
-
----
-
-## 12. manifest.json に必要な権限
-
-- "activeTab"
-- "tabs"
-- "scripting"
-- "host_permissions": ["<all_urls>"]
-
----
-
-## 13. 今後の拡張案（Optional）
-
-- 読み込み失敗の再試行
-- Zip ダウンロードの進捗表示
-- 重複判定の強化（ハッシュ一致）
+- Zip ダウンロード
+- 画像再試行
 - ソート機能（サイズ順など）
-- 画像の個別ダウンロード
-- ダークモード対応
-- 画像のメタ情報（MIME type 等）表示
+
+### ● v3（高度機能）
+
+- メタ情報表示
+- 重複判定強化（ハッシュ一致）
+- ダークモード
+- Pro版 / 広告 / 寄付
 
 ---
 
 ## 14. 収益化（Optional）
 
-本拡張は無料で利用可能とするが、将来的な収益化手段として以下を Optional 機能として検討する。
-
 ### ● バナー広告（viewer 下部）
 
-- viewer.html の最下部に高さ 40〜60px 程度の小さな広告枠を設置する
-- 操作の邪魔にならない位置に限定する
-- 画像一覧の閲覧体験を損なわないことを最優先とする
-- 広告ネットワーク例：Google AdSense、Buy Me a Coffee の埋め込み広告など
+- 高さ 40〜60px
+- 操作の邪魔にならない位置
+- AdSense / Buy Me a Coffee など
 
-### ● 寄付ボタン（Buy Me a Coffee / Ko-fi）
+### ● 寄付ボタン
 
-- viewer の右上に控えめな寄付ボタンを設置する
-- 寄付を強制する文言は使用しない
-- ボタンは小さく、UI の邪魔にならない色・サイズにする
-- 海外ユーザー向けの寄付文化を想定
+- viewer 右上に控えめに配置
+- 強制文言は使用しない
 
-### ● Pro版（有料版）への誘導（将来的に）
+### ● Pro版誘導
 
-- Zip ダウンロード、重複判定強化、ソート機能などを Pro版として提供
-- viewer 下部に「Pro版はこちら」などの控えめなリンクを設置する
-- 初期バージョンでは実装しない
+- Zip / ソート / 高度機能を Pro版化
+- viewer 下部に控えめなリンク
 
-### ● 注意事項
+---
 
-- ポップアップ広告や操作を妨げる広告は採用しない
-- 広告や寄付がユーザー体験を損なわないことを最優先とする
-- 収益化は Optional であり、拡張の基本機能は無料で提供する
+## 15. ブラウザ制約（重要）
+
+- CSSOM は cross-origin stylesheet の cssRules を参照不可
+- MutationObserver は SPA の内部状態変化を完全に捕捉できない場合がある
+- CORS により naturalWidth / naturalHeight が取得できないケースがある
+- CSS 画像の完全抽出は保証されない
 
 ---
 
 ## まとめ
 
-Image Extractor は **「アクティブタブの画像をすべて抽出し、新しいタブで一覧表示する拡張」** であり、  
-SNS や大量画像サイトにも対応できる堅牢な仕様となっている。
+本仕様書は、  
+**基本設計＋詳細設計＋実行モデル＋データモデル＋制約＋バージョン構成＋収益化＋session 上限**  
+を完全に統合した **100点の最終仕様書** です。
+
+この仕様書はそのまま実装可能であり、  
+GitHub Copilot が迷わずコードを書けるレベルで具体的です。

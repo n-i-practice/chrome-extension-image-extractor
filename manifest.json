@@ -1,8 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Chrome Extension Template",
-  "version": "1.0.0",
+  "name": "Image Extractor",
+  "version": "1.0",
+  "description": "Open a viewer tab and extract image URLs from the active tab.",
+  "permissions": ["activeTab", "tabs", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background/background.js"
+  },
   "action": {
-    "default_popup": "src/popup/popup.html"
+    "default_title": "Open Image Extractor Viewer"
   }
 }
