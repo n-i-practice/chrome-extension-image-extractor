@@ -17,6 +17,48 @@
       <section class="grid" id="grid"></section>
     </main>
 
+    <div id="modal" class="hidden">
+      <div id="overlay"></div>
+      <img id="modal-img" />
+
+      <!-- 拡大／縮小切り替え -->
+      <button id="zoom-btn">
+        <!-- 拡大アイコン（外向き矢印） -->
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="50"
+          height="50"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ffffff"
+          stroke-width="2"
+          stroke-linecap="square"
+          stroke-linejoin="arcs"
+        >
+          <!-- 黒背景 -->
+          <rect width="24" height="24" fill="black" />
+
+          <!-- 外向き矢印 -->
+          <path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1" />
+        </svg>
+
+        <!-- 縮小アイコン（内向き矢印） -->
+        <svg
+          id="zoom-out-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="50"
+          height="50"
+          viewBox="0 0 50 50"
+          style="display: none"
+        >
+          <path
+            d="M36 46H26V44L32.34 44L24 35.66L25.66 34L34 42.34L34 36H36V46ZM24 16L17.66 16L26 7.66L24.34 6L16 14.34V8H14V18H24V16Z"
+            fill="white"
+          />
+        </svg>
+      </button>
+    </div>
+
     <script src="viewer.js"></script>
   </body>
 </html>

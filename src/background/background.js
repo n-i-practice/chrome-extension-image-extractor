@@ -23,6 +23,7 @@ chrome.runtime.onMessage.addListener((message) => {
 
       chrome.tabs.create({
         url: chrome.runtime.getURL("src/viewer/viewer.html"),
+        active: true,
       });
     });
   }

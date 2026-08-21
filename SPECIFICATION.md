@@ -160,9 +160,72 @@ IntersectionObserver により、画面に近づいた画像だけ読み込む�
 
 ### ● 画像クリック（必ず background 経由）
 
-viewer → background にメッセージ送信  
-background が `chrome.tabs.create({ url: src })` で新しいタブを開く  
-（window.open は使用しない）
+## 8.1 Viewer の状態遷移仕様（一覧 ↔ 拡大 ↔ 原寸大）
+
+viewer は以下の 3 状態を持つ。
+
+- **grid（一覧）**
+- **zoom（拡大）**
+- **original（原寸大）**
+
+状態はユーザー操作により線形に遷移する。
+
+### ● 状態遷移
+
+1. **一覧 → 拡大**
+   - 画像カード（item）クリック時
+   - 拡大表示は flex による中央寄せ
+   - `object-fit: contain` により画面サイズ最大で表示
+
+2. **拡大 → 一覧**
+   - overlay（黒背景）クリック時
+   - original 状態では overlay クリックしても閉じない（安全仕様）
+
+3. **拡大 → 原寸大**
+   - zoom ボタン（＋）クリック時
+   - 原寸大画像は `position: absolute` とし、画像中央が画面中央に来るように left/top を JS で計算して配置
+
+4. **原寸大 → 拡大**
+   - zoom ボタン（−）クリック時
+   - 原寸大でドラッグされた left/top は破棄し、拡大状態に戻る際は left/top をリセットして flex の中央寄せに戻す
+
+### ● 各状態の表示仕様
+
+#### ✔ 一覧（grid）
+
+- 画像カードをグリッド表示
+- `object-fit: contain`
+- 画像クリックで zoom 状態へ遷移
+
+#### ✔ 拡大（zoom）
+
+- viewer 全体を覆う overlay を表示
+- 画像は中央寄せ（flex）
+- `max-width: 100vw`, `max-height: 100vh`
+- zoom ボタンで original へ遷移
+- overlay クリックで grid へ戻る
+
+#### ✔ 原寸大（original）
+
+- `position: absolute`
+- `object-fit: none`
+- 画像中央が画面中央に来るように left/top を JS で計算
+- ユーザーはドラッグで画像位置を変更可能
+- zoom ボタンで zoom 状態へ戻る（left/top はリセット）
+
+### ● ドラッグ仕様（original 状態のみ）
+
+- `mousedown` → `dragging` クラス付与
+- `mousemove` → left/top を更新
+- `mouseup` → `dragging` クラス削除
+- 拡大状態へ戻る際は left/top を空にして中央寄せを復元する
+
+### ● 安全仕様
+
+- original 状態では overlay クリックで閉じない  
+  → 誤操作による状態破綻を防ぐため
+- zoom 状態へ戻すときは必ず left/top をリセット  
+  → original のドラッグ位置が残らないようにする
 
 ---
 
