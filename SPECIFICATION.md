@@ -160,7 +160,7 @@ IntersectionObserver により、画面に近づいた画像だけ読み込む�
 
 ### ● 画像クリック（必ず background 経由）
 
-## 8.1 Viewer の状態遷移仕様（一覧 ↔ 拡大 ↔ 原寸大）
+## 8.1 Viewer の状態遷移仕様（完全版）
 
 viewer は以下の 3 状態を持つ。
 
@@ -170,62 +170,116 @@ viewer は以下の 3 状態を持つ。
 
 状態はユーザー操作により線形に遷移する。
 
-### ● 状態遷移
+---
 
-1. **一覧 → 拡大**
-   - 画像カード（item）クリック時
-   - 拡大表示は flex による中央寄せ
-   - `object-fit: contain` により画面サイズ最大で表示
+## 🔄 状態遷移一覧
 
-2. **拡大 → 一覧**
-   - overlay（黒背景）クリック時
-   - original 状態では overlay クリックしても閉じない（安全仕様）
+### 1. 一覧 → 拡大（grid → zoom）
 
-3. **拡大 → 原寸大**
-   - zoom ボタン（＋）クリック時
-   - 原寸大画像は `position: absolute` とし、画像中央が画面中央に来るように left/top を JS で計算して配置
+- 画像カード（item）クリック時
+- 拡大表示は flex による中央寄せ
+- `object-fit: contain` により画面サイズ最大で表示
 
-4. **原寸大 → 拡大**
-   - zoom ボタン（−）クリック時
-   - 原寸大でドラッグされた left/top は破棄し、拡大状態に戻る際は left/top をリセットして flex の中央寄せに戻す
+---
 
-### ● 各状態の表示仕様
+### 2. 拡大 → 一覧（zoom → grid）
 
-#### ✔ 一覧（grid）
+- ✕ボタン（close-btn）クリック時
+- overlay は使用しない
+- modal を閉じ、状態を GRID に戻す
 
-- 画像カードをグリッド表示
+---
+
+### 3. 拡大 → 原寸大（zoom → original）
+
+- zoom ボタン（＋）クリック時
+- 原寸大画像は `position: absolute`
+- `object-fit: none`
+- 画像中央が画面中央に来るように JS で配置
+- ドラッグ可能かどうかは画像サイズに応じて動的に判定
+  - 画像が画面より大きい → ドラッグ可能
+  - 画像が画面より小さい → ドラッグ不可（中央固定）
+
+---
+
+### 4. 原寸大 → 拡大（original → zoom）
+
+- zoom ボタン（−）クリック時
+- `left/top` をリセットし、flex の中央寄せに戻す
+- 状態を ZOOM に戻す
+
+---
+
+### 5. 原寸大 → 一覧（original → grid）
+
+- ✕ボタン（close-btn）クリック時
+- `left/top` をリセット
+- modal を閉じ、状態を GRID に戻す
+
+---
+
+## 🖼 各状態の表示仕様
+
+### ✔ 一覧（grid）
+
+- グリッド表示
 - `object-fit: contain`
-- 画像クリックで zoom 状態へ遷移
+- 画像クリックで zoom へ遷移
+- modal は非表示
 
-#### ✔ 拡大（zoom）
+---
 
-- viewer 全体を覆う overlay を表示
-- 画像は中央寄せ（flex）
-- `max-width: 100vw`, `max-height: 100vh`
+### ✔ 拡大（zoom）
+
+- modal を表示
+- overlay は使用しない
+- flex による中央寄せ
 - zoom ボタンで original へ遷移
-- overlay クリックで grid へ戻る
+- ✕ボタンで grid へ戻る
 
-#### ✔ 原寸大（original）
+---
+
+### ✔ 原寸大（original）
 
 - `position: absolute`
 - `object-fit: none`
-- 画像中央が画面中央に来るように left/top を JS で計算
-- ユーザーはドラッグで画像位置を変更可能
-- zoom ボタンで zoom 状態へ戻る（left/top はリセット）
+- 画像中央を画面中央に配置
+- ドラッグ可能かどうかは動的判定
+  - 画像が画面より大きい → ドラッグ可能
+  - 画像が画面より小さい → ドラッグ不可
+- zoom ボタンで zoom に戻る（位置リセット）
+- ✕ボタンで grid に戻る（位置リセット）
 
-### ● ドラッグ仕様（original 状態のみ）
+---
 
-- `mousedown` → `dragging` クラス付与
-- `mousemove` → left/top を更新
-- `mouseup` → `dragging` クラス削除
-- 拡大状態へ戻る際は left/top を空にして中央寄せを復元する
+## 🖱 ドラッグ仕様（original 状態のみ）
 
-### ● 安全仕様
+- `mousedown` → ドラッグ開始
+- `mousemove` → 位置更新
+- `mouseup` → ドラッグ終了
 
-- original 状態では overlay クリックで閉じない  
-  → 誤操作による状態破綻を防ぐため
-- zoom 状態へ戻すときは必ず left/top をリセット  
-  → original のドラッグ位置が残らないようにする
+### ● ドラッグ可能条件
+
+- 画像が画面より大きい場合のみドラッグ可能
+- 画像が画面より小さい場合は中央固定でドラッグ不可
+
+### ● ドラッグ可能範囲
+
+- 範囲は画像サイズと画面サイズに応じて動的に決定
+- 固定値による制限は行わない
+
+### ● 状態遷移時の位置リセット
+
+- zoom / grid に戻る際は必ず `left/top` をリセット
+
+---
+
+## 🔐 安全仕様
+
+- overlay は使用しない
+- 閉じる操作は ✕ボタンのみ
+- original 状態でも ✕ボタンで閉じられる
+- zoom / original → grid の遷移時は必ず位置リセット
 
 ---
 
