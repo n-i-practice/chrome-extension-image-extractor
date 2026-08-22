@@ -38,9 +38,10 @@ GRID
 - enterZoomState() を実行
   - modal-img を中央寄せ
   - left/top を 0 にリセット
-  - zoom-in アイコンを表示
+  - zoom-in アイコンを表示（ただし naturalWidth / naturalHeight が画面サイズ以下の場合は非表示）
   - zoom-out アイコンを非表示
-  - overlay を表示
+  - overlay を表示- modal-img の縮小後のサイズ（CSS 適用後の bounding box）を取得し、
+    画像全体が画面中央に配置されるように left/top を計算して設定する。
 
 ---
 

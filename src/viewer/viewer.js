@@ -134,18 +134,28 @@ document.addEventListener("mousemove", (e) => {
   const winWidth = window.innerWidth;
   const winHeight = window.innerHeight;
 
-  // ★ ドラッグ可能範囲（中央 ±100px）
-  const centerX = (winWidth - imgWidth) / 2;
-  const maxLeft = centerX + 100;
-  const minLeft = centerX - 100;
+  // 画像が画面より大きい場合のみドラッグ可能
+  const canDragX = imgWidth > winWidth;
+  const canDragY = imgHeight > winHeight;
 
-  const centerY = (winHeight - imgHeight) / 2;
-  const maxTop = centerY + 100;
-  const minTop = centerY - 100;
+  // 横方向ドラッグ
+  if (canDragX) {
+    const minLeft = winWidth - imgWidth; // 左端（画像右端が画面右端）
+    const maxLeft = 0; // 右端（画像左端が画面左端）
+    newLeft = Math.min(Math.max(newLeft, minLeft), maxLeft);
+  } else {
+    // 小さい画像は中央固定のまま
+    newLeft = imgX;
+  }
 
-  // 範囲内に収める
-  newLeft = Math.min(Math.max(newLeft, minLeft), maxLeft);
-  newTop = Math.min(Math.max(newTop, minTop), maxTop);
+  // 縦方向ドラッグ
+  if (canDragY) {
+    const minTop = winHeight - imgHeight;
+    const maxTop = 0;
+    newTop = Math.min(Math.max(newTop, minTop), maxTop);
+  } else {
+    newTop = imgY;
+  }
 
   modalImg.style.left = `${newLeft}px`;
   modalImg.style.top = `${newTop}px`;
@@ -182,8 +192,21 @@ function enterZoomState() {
   modalImg.style.left = "0px";
   modalImg.style.top = "0px";
 
-  // ボタン切り替え（拡大 → 原寸大）
-  zoomInIcon.style.display = "block";
+  // natural size を取得（拡大可能か判定するため）
+  const naturalWidth = modalImg.naturalWidth;
+  const naturalHeight = modalImg.naturalHeight;
+
+  const winWidth = window.innerWidth;
+  const winHeight = window.innerHeight;
+
+  // ★ natural size が画面サイズ以下なら拡大不可 → zoom-in を非表示
+  if (naturalWidth <= winWidth && naturalHeight <= winHeight) {
+    zoomInIcon.style.display = "none";
+  } else {
+    zoomInIcon.style.display = "block";
+  }
+
+  // zoom-out は常に非表示（ZOOM状態なので）
   zoomOutIcon.style.display = "none";
 }
 
