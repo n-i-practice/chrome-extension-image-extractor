@@ -1,6 +1,6 @@
-# 📘 Image Extractor — 仕様書（100点の最終完全版）
+# 📘 Image Extractor — 仕様書（viewerの仕様はVIEWER_SPER.mdを参照）
 
-## 1. 概要
+## 概要
 
 **Image Extractor** は、アクティブタブに表示されているすべての画像を抽出し、新しいタブ（viewer）で一覧表示する Chrome 拡張です。
 
@@ -28,7 +28,7 @@ CSS 画像の抽出は **best effort** とし、ブラウザ制約により完�
 
 ---
 
-## 2. 目的（Requirements）
+## 目的（Requirements）
 
 - アクティブタブに表示されている画像をすべて取得
 - CSS / JS 制御の画像も取得
@@ -45,7 +45,7 @@ CSS 画像の抽出は **best effort** とし、ブラウザ制約により完�
 
 ---
 
-## 3. 実行モデル（重要）
+## 実行モデル（重要）
 
 ### ● content script の実行タイミング
 
@@ -62,19 +62,9 @@ CSS 画像の抽出は **best effort** とし、ブラウザ制約により完�
 - `chrome.storage.session` に画像リストを保存
 - viewer タブを開く
 
-### ● viewer の役割
-
-- session から画像リストを読み込む
-- IntersectionObserver による Lazy Load
-- naturalWidth / naturalHeight を取得
-- 最小サイズフィルタを適用
-- 読み込み失敗画像を除外
-- 画像クリックで background にメッセージ送信
-- background が `chrome.tabs.create` で新しいタブを開く
-
 ---
 
-## 4. データ構造（ImageRecord）※必須
+## データ構造（ImageRecord）※必須
 
 ```
 ImageRecord {
@@ -90,7 +80,7 @@ ImageRecord {
 
 ---
 
-## 5. 抽出対象（拡張版）
+## 抽出対象（拡張版）
 
 - `<img>` の `src`
 - `<source>` / `<picture>` の `srcset`
@@ -112,7 +102,7 @@ ImageRecord {
 
 ---
 
-## 6. URL重複除外（正規化）
+## URL重複除外（正規化）
 
 ### ● 正規化ルール
 
@@ -129,7 +119,7 @@ ImageRecord {
 
 ---
 
-## 7. srcset の最大解像度抽出
+## srcset の最大解像度抽出
 
 - `w` → 最大幅
 - `x` → 最大倍率
@@ -139,151 +129,7 @@ ImageRecord {
 
 ---
 
-## 8. viewer の表示仕様
-
-### ● Lazy Load
-
-IntersectionObserver により、画面に近づいた画像だけ読み込む。
-
-### ● 最小サイズフィルタ
-
-- naturalWidth / naturalHeight を使用
-- 0 の場合は除外
-- 初期値：400×400
-- フィルタは **画像読み込み後（onload）** に適用
-
-### ● 読み込み失敗
-
-- `img.onerror` → `isValid = false`
-- viewer から除外
-- Zip ダウンロード対象にも含めない
-
-### ● 画像クリック（必ず background 経由）
-
-## 8.1 Viewer の状態遷移仕様（完全版）
-
-viewer は以下の 3 状態を持つ。
-
-- **grid（一覧）**
-- **zoom（拡大）**
-- **original（原寸大）**
-
-状態はユーザー操作により線形に遷移する。
-
----
-
-## 🔄 状態遷移一覧
-
-### 1. 一覧 → 拡大（grid → zoom）
-
-- 画像カード（item）クリック時
-- 拡大表示は flex による中央寄せ
-- `object-fit: contain` により画面サイズ最大で表示
-
----
-
-### 2. 拡大 → 一覧（zoom → grid）
-
-- ✕ボタン（close-btn）クリック時
-- overlay は使用しない
-- modal を閉じ、状態を GRID に戻す
-
----
-
-### 3. 拡大 → 原寸大（zoom → original）
-
-- zoom ボタン（＋）クリック時
-- 原寸大画像は `position: absolute`
-- `object-fit: none`
-- 画像中央が画面中央に来るように JS で配置
-- ドラッグ可能かどうかは画像サイズに応じて動的に判定
-  - 画像が画面より大きい → ドラッグ可能
-  - 画像が画面より小さい → ドラッグ不可（中央固定）
-
----
-
-### 4. 原寸大 → 拡大（original → zoom）
-
-- zoom ボタン（−）クリック時
-- `left/top` をリセットし、flex の中央寄せに戻す
-- 状態を ZOOM に戻す
-
----
-
-### 5. 原寸大 → 一覧（original → grid）
-
-- ✕ボタン（close-btn）クリック時
-- `left/top` をリセット
-- modal を閉じ、状態を GRID に戻す
-
----
-
-## 🖼 各状態の表示仕様
-
-### ✔ 一覧（grid）
-
-- グリッド表示
-- `object-fit: contain`
-- 画像クリックで zoom へ遷移
-- modal は非表示
-
----
-
-### ✔ 拡大（zoom）
-
-- modal を表示
-- overlay は使用しない
-- flex による中央寄せ
-- zoom ボタンで original へ遷移
-- ✕ボタンで grid へ戻る
-
----
-
-### ✔ 原寸大（original）
-
-- `position: absolute`
-- `object-fit: none`
-- 画像中央を画面中央に配置
-- ドラッグ可能かどうかは動的判定
-  - 画像が画面より大きい → ドラッグ可能
-  - 画像が画面より小さい → ドラッグ不可
-- zoom ボタンで zoom に戻る（位置リセット）
-- ✕ボタンで grid に戻る（位置リセット）
-
----
-
-## 🖱 ドラッグ仕様（original 状態のみ）
-
-- `mousedown` → ドラッグ開始
-- `mousemove` → 位置更新
-- `mouseup` → ドラッグ終了
-
-### ● ドラッグ可能条件
-
-- 画像が画面より大きい場合のみドラッグ可能
-- 画像が画面より小さい場合は中央固定でドラッグ不可
-
-### ● ドラッグ可能範囲
-
-- 範囲は画像サイズと画面サイズに応じて動的に決定
-- 固定値による制限は行わない
-
-### ● 状態遷移時の位置リセット
-
-- zoom / grid に戻る際は必ず `left/top` をリセット
-
----
-
-## 🔐 安全仕様
-
-- overlay は使用しない
-- 閉じる操作は ✕ボタンのみ
-- original 状態でも ✕ボタンで閉じられる
-- zoom / original → grid の遷移時は必ず位置リセット
-
----
-
-## 9. background ↔ viewer のデータ受け渡し
+## background ↔ viewer のデータ受け渡し
 
 ### ● メッセージ設計
 
@@ -308,7 +154,7 @@ viewer → background:
 
 ---
 
-## 10. Manifest V3 の正式定義
+## Manifest V3 の正式定義
 
 ```
 {
@@ -335,46 +181,21 @@ viewer → background:
 
 ---
 
-## 11. 大量画像サイトへの対策
+## 大量画像サイトへの対策
 
 - 画像収集は **逐次処理（バッチ処理）**
-- viewer は **Lazy Load**
 - content script は **MutationObserver + debounce**
 - 重複判定は content script 側で事前に行う
 - CORS により naturalWidth が取得できないケースを許容
-- data URL は viewer 表示可だが Zip 対象外
 
 ---
 
-## 12. viewer の実体（明文化）
-
-viewer は拡張内のページ：
-
-```
-src/viewer/viewer.html
-src/viewer/viewer.js
-```
-
-background は以下で開く：
-
-```
-chrome.tabs.create({
-  url: chrome.runtime.getURL("src/viewer/viewer.html")
-})
-```
-
----
-
-## 13. バージョン構成（v1 / v2 / v3）
+## バージョン構成（v1 / v2 / v3）
 
 ### ● v1（初期リリース）
 
 - 画像収集
-- viewer 表示
-- Lazy Load
-- 最小サイズフィルタ
 - 読み込み失敗除外
-- 画像クリック → background → 新しいタブ
 
 ### ● v2（機能拡張）
 
@@ -391,7 +212,7 @@ chrome.tabs.create({
 
 ---
 
-## 14. 収益化（Optional）
+## 収益化（Optional）
 
 ### ● バナー広告（viewer 下部）
 
@@ -401,17 +222,15 @@ chrome.tabs.create({
 
 ### ● 寄付ボタン
 
-- viewer 右上に控えめに配置
 - 強制文言は使用しない
 
 ### ● Pro版誘導
 
 - Zip / ソート / 高度機能を Pro版化
-- viewer 下部に控えめなリンク
 
 ---
 
-## 15. ブラウザ制約（重要）
+## ブラウザ制約（重要）
 
 - CSSOM は cross-origin stylesheet の cssRules を参照不可
 - MutationObserver は SPA の内部状態変化を完全に捕捉できない場合がある
