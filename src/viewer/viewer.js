@@ -12,6 +12,7 @@ let viewerState = ViewerState.GRID;
 
 const modal = document.getElementById("modal");
 const modalImg = document.getElementById("modal-img");
+const overlay = document.getElementById("overlay");
 const closeBtn = document.getElementById("close-btn");
 const zoomBtn = document.getElementById("zoom-btn");
 const zoomInIcon = document.getElementById("zoom-in-icon");
@@ -48,6 +49,10 @@ chrome.storage.session.get("images").then(({ images }) => {
     div.appendChild(img);
     grid.appendChild(div);
   });
+});
+
+overlay.addEventListener("click", () => {
+  enterGridState();
 });
 
 closeBtn.addEventListener("click", () => {
@@ -108,11 +113,13 @@ document.addEventListener("mousemove", (e) => {
   const winHeight = window.innerHeight;
 
   // ★ 端から100pxまでしかドラッグできないように制限
-  const minLeft = winWidth - imgWidth - 100; // 右端 +100px
-  const maxLeft = 100; // 左端 +100px
+  const centerX = (winWidth - imgWidth) / 2;
+  const maxLeft = centerX + 100;
+  const minLeft = centerX - 100;
 
-  const minTop = winHeight - imgHeight - 100; // 下端 +100px
-  const maxTop = 100; // 上端 +100px
+  const centerY = (winHeight - imgHeight) / 2;
+  const maxTop = centerY + 100;
+  const minTop = centerY - 100;
 
   // clamp（範囲に収める）
   newLeft = Math.min(Math.max(newLeft, minLeft), maxLeft);
