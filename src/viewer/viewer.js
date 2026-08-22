@@ -1,7 +1,21 @@
+// ===============================
+// Viewer State Enum（追加）
+// ===============================
+const ViewerState = {
+  GRID: "grid",
+  ZOOM: "zoom",
+  ORIGINAL: "original",
+};
+
+// 現在の状態（初期値は一覧）
+let viewerState = ViewerState.GRID;
+
 const modal = document.getElementById("modal");
 const modalImg = document.getElementById("modal-img");
 const overlay = document.getElementById("overlay");
 const zoomBtn = document.getElementById("zoom-btn");
+const zoomInIcon = document.getElementById("zoom-in-icon");
+const zoomOutIcon = document.getElementById("zoom-out-icon");
 
 // 画像のURLが連携されたら一覧表示する
 chrome.storage.session.get("images").then(({ images }) => {
@@ -28,9 +42,7 @@ chrome.storage.session.get("images").then(({ images }) => {
       modalImg.src = img.src;
       modal.classList.remove("hidden");
 
-      modalImg.classList.remove("original");
-      modalImg.style.left = "0px";
-      modalImg.style.top = "0px";
+      enterZoomState();
     });
 
     div.appendChild(img);
@@ -44,39 +56,16 @@ overlay.addEventListener("click", () => {
     return; // 原寸大のときは閉じない
   }
 
-  modal.classList.add("hidden");
+  enterGridState();
 });
 
 zoomBtn.addEventListener("click", () => {
   const isOriginal = modalImg.classList.toggle("original");
 
-  const zoomIn = document.getElementById("zoom-in-icon");
-  const zoomOut = document.getElementById("zoom-out-icon");
-
   if (isOriginal) {
-    // 拡大・縮小ボタンの表示切り替え
-    zoomIn.style.display = "none";
-    zoomOut.style.display = "block";
-
-    // 原寸大の画像サイズを取得
-    const rect = modalImg.getBoundingClientRect();
-    const imgWidth = rect.width;
-    const imgHeight = rect.height;
-
-    // 画面中央に配置するための left/top を計算
-    const centerX = (window.innerWidth - imgWidth) / 2;
-    const centerY = (window.innerHeight - imgHeight) / 2;
-
-    modalImg.style.left = `${centerX}px`;
-    modalImg.style.top = `${centerY}px`;
+    enterOriginalState();
   } else {
-    // 拡大・縮小ボタンの表示切り替え
-    zoomIn.style.display = "block";
-    zoomOut.style.display = "none";
-
-    // 通常サイズに戻すときは中央揃えに任せる
-    modalImg.style.left = "0px";
-    modalImg.style.top = "0px";
+    enterZoomState();
   }
 });
 
@@ -140,3 +129,66 @@ document.addEventListener("mouseup", () => {
   isDragging = false;
   modalImg.classList.remove("dragging");
 });
+
+/**
+ * 一覧表示状態遷移時の処理
+ * modalImg のクラスや left/top の調整、ボタンの表示切り替えなどを行う
+ * これにより、拡大・縮小ボタンの表示切り替えや、一覧表示の画像を画面中央に配置する処理が一元化される
+ */
+function enterGridState() {
+  viewerState = ViewerState.GRID;
+
+  // モーダルを閉じる
+  modal.classList.add("hidden");
+
+  modalImg.classList.remove("original");
+  modalImg.style.left = "0px";
+  modalImg.style.top = "0px";
+
+  zoomInIcon.style.display = "none";
+  zoomOutIcon.style.display = "block";
+}
+
+/**
+ * 拡大表示状態遷移時の処理
+ * modalImg のクラスや left/top の調整、ボタンの表示切り替えなどを行う
+ * これにより、拡大・縮小ボタンの表示切り替えや、拡大画像の画像を画面中央に配置する処理が一元化される
+ */
+function enterZoomState() {
+  viewerState = ViewerState.ZOOM;
+
+  modalImg.classList.remove("original");
+  modalImg.style.left = "0px";
+  modalImg.style.top = "0px";
+
+  zoomInIcon.style.display = "none";
+  zoomOutIcon.style.display = "block";
+}
+
+/**
+ * 原寸大表示状態遷移時の処理
+ * modalImg のクラスや left/top の調整、ボタンの表示切り替えなどを行う
+ * これにより、拡大・縮小ボタンの表示切り替えや、原寸大の画像を画面中央に配置する処理が一元化される
+ */
+function enterOriginalState() {
+  viewerState = ViewerState.ORIGINAL;
+
+  modalImg.classList.add("original");
+
+  // 拡大・縮小ボタンの表示切り替え
+
+  zoomInIcon.style.display = "block";
+  zoomOutIcon.style.display = "none";
+
+  // 原寸大の画像サイズを取得
+  const rect = modalImg.getBoundingClientRect();
+  const imgWidth = rect.width;
+  const imgHeight = rect.height;
+
+  // 画面中央に配置するための left/top を計算
+  const centerX = (window.innerWidth - imgWidth) / 2;
+  const centerY = (window.innerHeight - imgHeight) / 2;
+
+  modalImg.style.left = `${centerX}px`;
+  modalImg.style.top = `${centerY}px`;
+}
