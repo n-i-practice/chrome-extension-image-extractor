@@ -19,16 +19,13 @@
 
     <div id="modal" class="hidden">
       <div id="overlay"></div>
-      <img id="modal-img" />
+      <img id="modal-img" />]]
 
-      <!-- 拡大／縮小切り替え -->
-      <button id="zoom-btn">
-        <!-- 拡大アイコン -->
+      <!-- ✕ボタン -->
+      <button id="close-btn">
         <svg
-          id="zoom-out-icon"
+          id="close-icon"
           xmlns="http://www.w3.org/2000/svg"
-          width="50"
-          height="50"
           viewBox="0 0 24 24"
           fill="none"
           stroke="#ffffff"
@@ -36,8 +33,29 @@
           stroke-linecap="square"
           stroke-linejoin="arcs"
         >
-          <!-- 黒背景 -->
-          <rect width="24" height="24" fill="black" />
+          <!-- 背景＋白枠線 -->
+          <rect width="24" height="24" fill="black" stroke="#ffffff" />
+
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <!-- 拡大／縮小切り替え -->
+      <button id="zoom-btn">
+        <!-- 拡大アイコン -->
+        <svg
+          id="zoom-in-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ffffff"
+          stroke-width="2"
+          stroke-linecap="square"
+          stroke-linejoin="arcs"
+        >
+          <!-- 背景＋白枠線 -->
+          <rect width="24" height="24" fill="black" stroke="#ffffff" />
 
           <!-- 外向き矢印 -->
           <path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1" />
@@ -45,10 +63,8 @@
 
         <!-- 縮小アイコン -->
         <svg
-          id="zoom-in-icon"
+          id="zoom-out-icon"
           xmlns="http://www.w3.org/2000/svg"
-          width="50"
-          height="50"
           viewBox="0 0 24 24"
           fill="none"
           stroke="#ffffff"
@@ -56,8 +72,8 @@
           stroke-linecap="square"
           stroke-linejoin="arcs"
         >
-          <!-- 黒背景 -->
-          <rect width="24" height="24" fill="black" />
+          <!-- 背景＋白枠線 -->
+          <rect width="24" height="24" fill="black" stroke="#ffffff" />
 
           <!-- 内向き矢印 -->
           <path d="M4 14h6v6M3 21l6.1-6.1M20 10h-6V4M21 3l-6.1 6.1" />

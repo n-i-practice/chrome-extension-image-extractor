@@ -12,7 +12,7 @@ let viewerState = ViewerState.GRID;
 
 const modal = document.getElementById("modal");
 const modalImg = document.getElementById("modal-img");
-const overlay = document.getElementById("overlay");
+const closeBtn = document.getElementById("close-btn");
 const zoomBtn = document.getElementById("zoom-btn");
 const zoomInIcon = document.getElementById("zoom-in-icon");
 const zoomOutIcon = document.getElementById("zoom-out-icon");
@@ -50,19 +50,12 @@ chrome.storage.session.get("images").then(({ images }) => {
   });
 });
 
-// オーバーレイ部分をクリックで拡大表示を閉じる
-overlay.addEventListener("click", () => {
-  if (modalImg.classList.contains("original")) {
-    return; // 原寸大のときは閉じない
-  }
-
+closeBtn.addEventListener("click", () => {
   enterGridState();
 });
 
 zoomBtn.addEventListener("click", () => {
-  const isOriginal = modalImg.classList.toggle("original");
-
-  if (isOriginal) {
+  if (viewerState === ViewerState.ZOOM) {
     enterOriginalState();
   } else {
     enterZoomState();
@@ -77,7 +70,9 @@ let imgY = 0;
 
 modalImg.addEventListener("mousedown", (e) => {
   // オリジナルサイズのときだけドラッグ可能
-  if (!modalImg.classList.contains("original")) return;
+  if (viewerState !== ViewerState.ORIGINAL) {
+    return;
+  }
 
   // ブラウザの標準画像ドラッグを無効化
   e.preventDefault();
@@ -94,7 +89,9 @@ modalImg.addEventListener("mousedown", (e) => {
 });
 
 document.addEventListener("mousemove", (e) => {
-  if (!isDragging) return;
+  if (!isDragging) {
+    return;
+  }
 
   const dx = e.clientX - startX;
   const dy = e.clientY - startY;
@@ -140,13 +137,6 @@ function enterGridState() {
 
   // モーダルを閉じる
   modal.classList.add("hidden");
-
-  modalImg.classList.remove("original");
-  modalImg.style.left = "0px";
-  modalImg.style.top = "0px";
-
-  zoomInIcon.style.display = "none";
-  zoomOutIcon.style.display = "block";
 }
 
 /**
@@ -161,8 +151,9 @@ function enterZoomState() {
   modalImg.style.left = "0px";
   modalImg.style.top = "0px";
 
-  zoomInIcon.style.display = "none";
-  zoomOutIcon.style.display = "block";
+  // 拡大・縮小ボタンの表示切り替え
+  zoomInIcon.style.display = "block";
+  zoomOutIcon.style.display = "none";
 }
 
 /**
@@ -176,9 +167,8 @@ function enterOriginalState() {
   modalImg.classList.add("original");
 
   // 拡大・縮小ボタンの表示切り替え
-
-  zoomInIcon.style.display = "block";
-  zoomOutIcon.style.display = "none";
+  zoomInIcon.style.display = "none";
+  zoomOutIcon.style.display = "block";
 
   // 原寸大の画像サイズを取得
   const rect = modalImg.getBoundingClientRect();

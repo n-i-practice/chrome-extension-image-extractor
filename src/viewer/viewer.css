@@ -82,26 +82,66 @@ h1 {
   object-fit: contain;
 }
 
-#zoom-btn {
+/* ✕ボタン（右上） */
+#close-btn {
   position: absolute;
   top: 20px;
   right: 20px;
-  z-index: 20;
+  z-index: 30;
 
-  /* SVG表示の邪魔になる要素を無効化 */
-  background: none; /* 背景を消す */
-  border: none; /* 枠線を消す */
-  padding: 0; /* 余白をゼロに */
+  width: 5vh;
+  height: 5vh;
+  min-width: 40px;
+  min-height: 40px;
+
+  background: none;
+  border: none;
+  padding: 0;
   margin: 0;
-  line-height: 0; /* 上下の謎の余白を消す */
-  font-size: 0; /* 文字サイズによる余白を完全に無効化 */
+  line-height: 0;
+  font-size: 0;
 
-  /* SVGを中央に配置 */
   display: inline-flex;
   align-items: center;
   justify-content: center;
 
   cursor: pointer;
+}
+
+#close-btn svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ズームボタン（右下） */
+#zoom-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 20;
+
+  width: 5vh;
+  height: 5vh;
+  min-width: 40px;
+  min-height: 40px;
+
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  line-height: 0;
+  font-size: 0;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+}
+
+#zoom-btn svg {
+  width: 100%;
+  height: 100%;
 }
 
 /* オリジナルサイズを画面中央に表示する */
