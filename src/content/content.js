@@ -1,6 +1,6 @@
 import { getLargestFromSrcset } from "./extractors/srcset.js";
 
-(() => {
+function extractImages() {
   // ページ内のすべての <img> 要素を取得
   const imgs = Array.from(document.querySelectorAll("img"));
   const srcList = [];
@@ -27,4 +27,10 @@ import { getLargestFromSrcset } from "./extractors/srcset.js";
     type: "image-urls",
     payload: srcList,
   });
-})();
+}
+
+// background から呼び出せるように window に登録
+window.extractImages = extractImages;
+
+// function未登録時の自動実行
+extractImages();

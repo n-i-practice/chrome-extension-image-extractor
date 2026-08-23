@@ -1,3 +1,7 @@
+// 末尾に「?script」を付けて content.js をインポートします
+// これにより、Viteが開発/本番に合わせて自動的に「正しい出力パス」を文字列として返してくれます
+import contentScriptPath from "../content/content.js?script";
+
 // 拡張アイコンがクリックされたときの処理
 chrome.action.onClicked.addListener(async () => {
   // 現在アクティブなタブを取得
@@ -11,11 +15,26 @@ chrome.action.onClicked.addListener(async () => {
     return;
   }
 
-  // content.js をアクティブタブに注入して画像抽出処理を開始
-  await chrome.scripting.executeScript({
+  // content.js がすでにタブに注入されているかどうかを確認
+  const checks = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    files: ["src/content/content.js"],
+    func: () => typeof window.extractImages === "function",
   });
+  const hasFunction = checks?.[0]?.result;
+
+  if (hasFunction) {
+    // content.js がすでにタブに注入されている場合は、直接関数を呼び出す
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => window.extractImages(),
+    });
+  } else {
+    // content.js をタブに注入して実行}
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: [contentScriptPath],
+    });
+  }
 });
 
 // content.js からのメッセージ受信（抽出した画像URL一覧）

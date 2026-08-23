@@ -11,4 +11,19 @@ export default defineConfig({
       interval: 1000, // 1秒ごとにチェック
     },
   },
+  build: {
+    rollupOptions: {
+      input: {
+        // もし既存の popup や background などの入力があればそこへ並べて追記
+        // 例: popup: resolve(__dirname, 'index.html'),
+
+        // ここを追記（content という名前で強制出力させる）
+        content: resolve(__dirname, "src/content/content.js"),
+      },
+      output: {
+        // ファイル名がハッシュ化（content-a1b2c3.js等）されるのを防ぎ固定化する
+        entryFileNames: "[name].js",
+      },
+    },
+  },
 });
