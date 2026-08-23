@@ -22,7 +22,6 @@ CSS 画像の抽出は **best effort** とし、ブラウザ制約により完�
 
 - `chrome.action.onClicked` を受信して viewer を開く
 - content script から画像リストを受信
-- URL 正規化・重複除外
 - `chrome.storage.session` に画像リストを保存
 - viewer タブを開く
 
@@ -49,7 +48,7 @@ CSS 画像の抽出は **best effort** とし、ブラウザ制約により完�
 
 ### ● content script の実行タイミング
 
-1. DOMContentLoaded で初回スキャン
+1. アイコンクリック時（スクリプト注入時）に初回スキャンを実行
 2. MutationObserver で追加画像を監視
 3. 追加画像は debounce（300ms）でまとめて処理
 4. SPA（Instagram / X / Pinterest）でも継続収集
@@ -238,12 +237,3 @@ viewer → background:
 - CSS 画像の完全抽出は保証されない
 
 ---
-
-## まとめ
-
-本仕様書は、  
-**基本設計＋詳細設計＋実行モデル＋データモデル＋制約＋バージョン構成＋収益化＋session 上限**  
-を完全に統合した **100点の最終仕様書** です。
-
-この仕様書はそのまま実装可能であり、  
-GitHub Copilot が迷わずコードを書けるレベルで具体的です。

@@ -1,0 +1,30 @@
+{
+  "name": "chrome-extension-image-extractor",
+  "version": "1.0.0",
+  "description": "Chrome拡張を作るための最小構成テンプレート。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/n-i-practice/chrome-extension-image-extractor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/n-i-practice/chrome-extension-image-extractor/issues"
+  },
+  "homepage": "https://github.com/n-i-practice/chrome-extension-image-extractor#readme",
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.33",
+    "vite": "^8.2.2"
+  }
+}

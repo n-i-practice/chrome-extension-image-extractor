@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>srcset テストページ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    section {
+      margin-bottom: 40px;
+    }
+    img {
+      display: block;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>srcset テストページ</h1>
+  <p>Image Extractor の srcset 抽出ロジックを検証するためのページです。</p>
+
+  <!-- 画像パスは test/img/ 配下 -->
+  <!-- ../img/200x200.png -->
+  <!-- ../img/400x400.png -->
+  <!-- ../img/800x800.png -->
+  <!-- ../img/1200x1200.png -->
+  <!-- ../img/2000x2000.png -->
+
+  <section>
+    <h2>① src のみ</h2>
+    <img src="../img/400x400.png" alt="src only">
+  </section>
+
+  <section>
+    <h2>② srcset（w のみ）</h2>
+    <img
+      src="../img/400x400.png"
+      srcset="
+        ../img/200x200.png 200w,
+        ../img/400x400.png 400w,
+        ../img/800x800.png 800w,
+        ../img/1200x1200.png 1200w,
+        ../img/2000x2000.png 2000w
+      "
+      alt="srcset w only"
+    >
+  </section>
+
+  <section>
+    <h2>③ srcset（x のみ）</h2>
+    <img
+      src="../img/400x400.png"
+      srcset="
+        ../img/400x400.png 1x,
+        ../img/800x800.png 2x,
+        ../img/1200x1200.png 3x
+      "
+      alt="srcset x only"
+    >
+  </section>
+
+  <section>
+    <h2>④ srcset（w と x の混在）</h2>
+    <img
+      src="../img/400x400.png"
+      srcset="
+        ../img/200x200.png 200w,
+        ../img/800x800.png 800w,
+        ../img/1200x1200.png 1200w,
+        ../img/2000x2000.png 2000w,
+        ../img/800x800.png 2x
+      "
+      alt="mixed w and x"
+    >
+  </section>
+
+  <section>
+    <h2>⑤ descriptor なし（仕様どおり先頭が採用される）</h2>
+    <img
+      src="../img/400x400.png"
+      srcset="
+        ../img/200x200.png,
+        ../img/800x800.png,
+        ../img/1200x1200.png
+      "
+      alt="srcset no descriptor"
+    >
+  </section>
+
+  <section>
+    <h2>⑥ src なし / srcset のみ</h2>
+    <img
+      srcset="
+        ../img/400x400.png 400w,
+        ../img/800x800.png 800w
+      "
+      alt="srcset only"
+    >
+  </section>
+
+  <section>
+    <h2>⑦ src も srcset もなし（抽出されないことを確認）</h2>
+    <img alt="no src no srcset">
+  </section>
+
+</body>
+</html>
