@@ -67,13 +67,14 @@ CSS 画像の抽出は **best effort** とし、ブラウザ制約により完�
 
 ```
 ImageRecord {
-  id: string,                 // UUID
-  src: string,                // 正規化済みURL
-  srcType: string,            // img / background / srcset / og:image / blob / data
-  origin: string,             // 抽出元（DOMノード情報）
-  naturalWidth: number,       // viewer側で取得
-  naturalHeight: number,      // viewer側で取得
-  isValid: boolean            // 読み込み成功/失敗
+  id: string,                 // v1必須: 重複除外・DOM管理に必要
+  src: string,                // v1必須: 正規化済みURL（最重要）
+  ext: string,                // v1必須: 拡張子（svg/gif/png/jpg/webp）フィルタ用
+  srcType: string,            // v1任意: img/background/srcset/blob/data（v2以降で有用）
+  origin: string,             // v1任意: 抽出元の簡易情報（詳細はv2以降）
+  naturalWidth: number,       // v1必須: 最小サイズフィルタに必要
+  naturalHeight: number,      // v1必須: 最小サイズフィルタに必要
+  isValid: boolean            // v1必須: viewer側で読み込み失敗を除外するため必要
 }
 ```
 
