@@ -10,6 +10,49 @@
     <header>
       <h1>画像一覧</h1>
       <p id="info"></p>
+
+      <!-- フィルター -->
+      <div class="filters">
+        <div class="size-filter-row">
+          <div class="size-filter-controls">
+            <!-- TODO: 最小サイズフィルターの「現在適用中の閾値」を表示する UI を追加する
+                 SVG/GIF はチェック状態で分かるため、最小サイズだけは明示表示したほうが理解しやすい -->
+            <label class="size-filter-input">
+              横
+              <input
+                type="number"
+                id="min-width"
+                min="0"
+                step="1"
+                value="0"
+                inputmode="numeric"
+              />
+            </label>
+            <label class="size-filter-input">
+              縦
+              <input
+                type="number"
+                id="min-height"
+                min="0"
+                step="1"
+                value="0"
+                inputmode="numeric"
+              />
+            </label>
+            <button type="button" id="apply-size-filter">適用</button>
+          </div>
+        </div>
+        <div>
+          <label>
+            <input type="checkbox" id="filter-svg" />
+            SVG を非表示
+          </label>
+          <label>
+            <input type="checkbox" id="filter-gif" />
+            GIF を非表示
+          </label>
+        </div>
+      </div>
     </header>
 
     <main>
@@ -19,7 +62,7 @@
 
     <div id="modal" class="hidden">
       <div id="overlay"></div>
-      <img id="modal-img" />]]
+      <img id="modal-img" />
 
       <!-- ✕ボタン -->
       <button id="close-btn">

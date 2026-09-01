@@ -1,165 +1,282 @@
-## Viewer の状態遷移仕様（イベント駆動・完全版）
+## Viewer 仕様書
 
-viewer は以下の 3 状態を持つ。
-
-- **grid（一覧）**
-- **zoom（拡大）**
-- **original（原寸大）**
-
-状態はユーザー操作（イベント）によって遷移し、  
-各イベントは viewer.js 内の状態遷移関数（enterGridState / enterZoomState / enterOriginalState）を実行する。
+本ドキュメントは、Chrome 拡張の画像ビューアにおける表示状態、モーダル制御、フィルター機能の仕様を定義する。
 
 ---
 
-## 🔄 状態遷移一覧（イベント → 実行される処理）
+## 1. 画面構成と状態
 
-```
-GRID
-↓ (item click)
-ZOOM
-↑ (close / overlay)
-↓ (zoom-in)
-ORIGINAL
-↑ (zoom-out)
-↓ (close / overlay)
-GRID
-```
+viewer は以下の 3 つの状態を持つ。
 
-### 一覧 → 拡大（grid → zoom）
+- grid: 一覧表示
+- zoom: 拡大表示
+- original: 原寸大表示
 
-**イベント**
+状態遷移はユーザー操作に応じて発生し、各状態は以下の関数で制御する。
 
-- ユーザーが一覧の画像カード（item）をクリックする
-
-**実行される処理**
-
-- modal を表示
-- modal-img にクリックされた画像の src を設定
-- enterZoomState() を実行
-  - modal-img を中央寄せ
-  - left/top を 0 にリセット
-  - zoom-in アイコンを表示（ただし naturalWidth / naturalHeight が画面サイズ以下の場合は非表示）
-  - zoom-out アイコンを非表示
-  - overlay を表示- modal-img の縮小後のサイズ（CSS 適用後の bounding box）を取得し、
-    画像全体が画面中央に配置されるように left/top を計算して設定する。
+- enterGridState()
+- enterZoomState()
+- enterOriginalState()
 
 ---
 
-### 拡大 → 一覧（zoom → grid）
+## 2. 状態遷移仕様
 
-**イベント**
+### 2.1 一覧 → 拡大表示
 
-- ✕ボタン（close-btn）をクリック
-- overlay をクリック
+イベント:
 
-**実行される処理**
+- 一覧の画像カードをクリックする
 
-- enterGridState() を実行
-  - modal を非表示
-  - overlay を非表示
-  - viewerState を GRID に変更
+処理:
 
----
+- modal を表示する
+- modal-img にクリックされた画像の src を設定する
+- viewerState を zoom に変更する
+- left / top の位置をリセットする
+- 画面サイズに応じて zoom-in アイコンの表示状態を更新する
+- zoom-out アイコンは非表示にする
 
-### 拡大 → 原寸大（zoom → original）
+### 2.2 拡大表示 → 一覧
 
-**イベント**
+イベント:
 
-- zoom ボタン（＋）をクリック
+- close ボタンをクリックする
+- overlay をクリックする
 
-**実行される処理**
+処理:
 
-- enterOriginalState() を実行
-  - modal-img に original クラスを付与
-  - zoom-in アイコンを非表示
-  - zoom-out アイコンを表示
-  - overlay を非表示
-  - modal-img の natural size を取得
-  - 画像中央が画面中央に来るように left/top を計算して配置
+- modal を非表示にする
+- viewerState を grid に戻す
+- left / top を初期化する
 
----
+### 2.3 拡大表示 → 原寸大表示
 
-### 原寸大 → 拡大（original → zoom）
+イベント:
 
-**イベント**
+- zoom ボタンをクリックする
 
-- zoom ボタン（−）をクリック
+処理:
 
-**実行される処理**
+- modal-img に original クラスを付与する
+- zoom-in アイコンを非表示にし、zoom-out アイコンを表示する
+- 画像を画面中央へ配置する
+- viewerState を original に変更する
 
-- enterZoomState() を実行
-  - modal-img の original クラスを削除
-  - left/top を 0 にリセット
-  - zoom-in アイコンを表示
-  - zoom-out アイコンを非表示
-  - overlay を表示
+### 2.4 原寸大表示 → 拡大表示
 
----
+イベント:
 
-### 原寸大 → 一覧（original → grid）
+- zoom ボタンをクリックする
 
-**イベント**
+処理:
 
-- ✕ボタン（close-btn）をクリック
-- overlay をクリック
+- original クラスを取り除く
+- left / top を 0 に戻す
+- zoom-in アイコンを表示し、zoom-out アイコンを非表示にする
+- viewerState を zoom に戻す
 
-**実行される処理**
+### 2.5 原寸大表示 → 一覧
 
-- enterGridState() を実行
-  - modal を非表示
-  - overlay を非表示
-  - modal-img の left/top をリセット
-  - viewerState を GRID に変更
+イベント:
 
----
+- close ボタンをクリックする
+- overlay をクリックする
 
-## 🖱 ドラッグ仕様（original 状態のみ）
+処理:
 
-### ドラッグ開始（mousedown）
-
-**イベント**
-
-- original 状態で modal-img を mousedown
-
-**実行される処理**
-
-- ブラウザ標準の画像ドラッグを無効化
-- dragging クラスを付与
-- 開始位置（startX/startY）を記録
-- 現在の画像位置（imgX/imgY）を記録
+- modal を非表示にする
+- viewerState を grid に戻す
+- left / top をリセットする
 
 ---
 
-### ドラッグ中（mousemove）
+## 3. ドラッグ動作仕様
 
-**イベント**
+オリジナルサイズ表示時に、画像が画面より大きい場合のみドラッグ可能とする。
 
-- isDragging = true の状態で mousemove
+### 3.1 ドラッグ開始
 
-**実行される処理**
+イベント:
 
-- dx/dy を計算
-- newLeft/newTop を算出
-- 画像サイズと画面サイズからドラッグ可能範囲を動的に決定
-- modal-img の left/top を更新
+- original 状態で modal-img を mousedown する
 
----
+処理:
 
-### ドラッグ終了（mouseup）
+- ブラウザ標準の画像ドラッグを抑止する
+- dragging クラスを付与する
+- startX, startY を記録する
+- 現在の画像位置 imgX, imgY を記録する
 
-**イベント**
+### 3.2 ドラッグ中
+
+イベント:
+
+- mousemove
+
+処理:
+
+- dx, dy を計算する
+- newLeft, newTop を算出する
+- 画像の幅・高さと画面サイズを比較し、ドラッグ範囲を制限する
+- modal-img の left / top を更新する
+
+### 3.3 ドラッグ終了
+
+イベント:
 
 - mouseup
 
-**実行される処理**
+処理:
 
-- dragging クラスを削除
-- isDragging を false に設定
+- dragging クラスを除去する
+- isDragging を false に戻す
 
 ---
 
-## 🔐 安全仕様
+## 4. SVG / GIF フィルター仕様
 
-- overlay は zoom / original の両状態で閉じる操作として有効
-- zoom / original → grid の遷移時は必ず left/top をリセット
-- original 状態でのドラッグは画像が画面より大きい場合のみ有効
+一覧の画像カードに対して、拡張子ベースのフィルタを適用する。
+
+### 4.1 フィルター項目
+
+- SVG を非表示にするチェックボックス
+- GIF を非表示にするチェックボックス
+
+### 4.2 判定基準
+
+各画像カードには dataset.ext を持ち、URL の拡張子から取得する。
+
+- ext が svg の場合、SVG フィルター対象
+- ext が gif の場合、GIF フィルター対象
+
+### 4.3 動作
+
+- SVG 非表示チェックが ON の場合、svg 拡張子の画像を grid から非表示にする
+- GIF 非表示チェックが ON の場合、gif 拡張子の画像を grid から非表示にする
+- フィルター条件は表示状態（zoom / original）には影響しない
+- フィルターは一覧画面にのみ適用される
+
+### 4.4 実装方針
+
+- フィルターは applyFilters() でまとめて評価する
+- 各 item の display を none もしくは空文字で切り替える
+- 画像の自然サイズが読み込み済みでない場合は、読み込み完了後に再度適用する
+
+---
+
+## 5. 最小サイズフィルター仕様
+
+最小サイズフィルターは、一覧表示の画像カードを絞り込むための条件として機能する。
+
+### 5.1 入力項目
+
+- 最小横幅入力欄: min-width
+- 最小縦幅入力欄: min-height
+- 適用ボタン: apply-size-filter
+
+### 5.2 ルール
+
+- 0 以上の整数のみ入力可能
+- 空欄は許容するが、実際の適用時には 0 として扱う
+- 負数は入力不可
+- e / E / - / 小数点などの不正な入力は入力時に弾く
+- 実際に入力欄に残る文字列が不正だった場合でも、適用時に正規化する
+
+### 5.3 実際のフィルター値
+
+ビューアは入力中の値と適用済みの値を分離して管理する。
+
+- 入力中の文字列: input 要素の value
+- 確定済みの閾値: committedMinWidth / committedMinHeight
+
+この分離により、入力途中で不正な値が入っても、実際のフィルター判定は確定値のみを使う。
+
+### 5.4 確定処理
+
+commitMinSizeFilter() は以下の流れで値を正規化する。
+
+- 空文字 → 0
+- 負数 → 0
+- 整数でない値 → 0
+- 非数値 → 0
+- 正常な 0 以上の整数 → その値を保持
+
+最終的に、入力欄の value も正規化済みの数値文字列へ更新し、committedMinWidth / committedMinHeight に反映する。
+
+### 5.5 フィルター判定
+
+各 item の判定は以下の条件になる。
+
+- item.width < committedMinWidth → 非表示
+- item.height < committedMinHeight → 非表示
+
+両方が条件を満たせば表示、どちらかが条件を満たさなければ非表示になる。
+
+### 5.6 反映タイミング
+
+フィルターは次の操作で反映される。
+
+- Enter キー押下
+- 適用ボタン押下
+- フィルター対象の画像読み込み完了時
+- SVG / GIF チェック状態変更時
+
+---
+
+## 6. 入力制御仕様
+
+### 6.1 入力時の制約
+
+入力欄では beforeinput イベントを利用し、以下の入力を抑止する。
+
+- -
+- e / E
+- 小数点
+- 非数値文字
+
+これはユーザー体験を優先した入力制御であり、ブラウザの number 入力の制限が不十分な場合の補助として機能する。
+
+### 6.2 Enter 時の挙動
+
+入力欄で Enter を押下した場合、以下を実行する。
+
+- 価値を正規化する
+- 確定値を更新する
+- applyFilters() を実行する
+
+### 6.3 空欄時の扱い
+
+- 空欄状態は許容する
+- Enter または適用ボタン押下時には 0 として確定する
+- 初期値として 0 を保持する設計とし、入力欄の placeholder で 400 を案内する場合も、データ自体は 400 を上書きしない
+
+---
+
+## 7. 画面表示に関する制約
+
+- フィルタは一覧画面に対してのみ適用される
+- モーダル表示時の画像にはサイズフィルターの条件は適用されない
+- SVG / GIF / 最小サイズのフィルターは grid 状態に関係なく、一覧内の画像に対して評価される
+
+---
+
+## 8. 期待されるユーザー体験
+
+- ユーザーは最小幅・最小高さを簡単に入力できる
+- 不正な値を入力しようとする場合、入力時に抑止される
+- 余計な数値入力や誤操作が起きにくい
+- 一覧で必要な画像だけを効率的に見られる
+- モーダル閲覧はフィルターとは独立して動作し、一覧の絞り込みと衝突しない
+
+---
+
+## 9. 実装上の要点
+
+- セレクタは一覧カードとモーダル画像に限定して背景を適用する
+- 画像の自然サイズの取得後にフィルターを再評価する
+- 確定済みの閾値を使い、入力欄の raw value をそのままフィルタ条件に使わない
+- 最終判定は committedMinWidth / committedMinHeight を基準に行う
+
+この設計により、入力時の快適さと、最終適用時の安全性を両立している。
+サイズフィルターは「ハイブリッド方式」で実装する。

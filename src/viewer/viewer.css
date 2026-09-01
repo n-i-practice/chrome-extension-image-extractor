@@ -24,6 +24,60 @@ h1 {
 }
 
 /* 画像一覧のグリッド */
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.filters > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.size-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.size-filter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #333;
+}
+
+.size-filter-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.size-filter-input input {
+  width: 72px;
+  padding: 4px 6px;
+  font-size: 14px;
+}
+
+#apply-size-filter {
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 .grid {
   display: flex;
   flex-wrap: wrap;
@@ -163,8 +217,10 @@ h1 {
   opacity: 0;
 }
 
-/* 透過部分を示す白とグレーの市松模様背景 */
-img {
+/* 透過部分を示す白とグレーの市松模様背景
+   一覧カードとモーダルの画像に限定して適用 */
+.item img,
+#modal-img {
   background-image:
     linear-gradient(
       45deg,

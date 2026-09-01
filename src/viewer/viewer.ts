@@ -23,6 +23,42 @@ const zoomOutIcon = document.getElementById("zoom-out-icon") as HTMLElement;
 const grid = document.getElementById("grid") as HTMLElement;
 const info = document.getElementById("info") as HTMLElement;
 
+// フィルター用チェックボックス
+const filterSvgCheckbox = document.getElementById(
+  "filter-svg",
+) as HTMLInputElement;
+const filterGifCheckbox = document.getElementById(
+  "filter-gif",
+) as HTMLInputElement;
+const minWidthInput = document.getElementById("min-width") as HTMLInputElement;
+const minHeightInput = document.getElementById(
+  "min-height",
+) as HTMLInputElement;
+const applySizeFilterButton = document.getElementById(
+  "apply-size-filter",
+) as HTMLButtonElement;
+
+// フィルター用変数
+// 適用中の最小サイズの値を保持する。入力中の値と適用後の値を分けて扱う。
+let committedMinWidth: number = 0;
+let committedMinHeight: number = 0;
+
+function commitMinSizeFilter(): void {
+  const widthValue = Number(minWidthInput.value || "0");
+  const heightValue = Number(minHeightInput.value || "0");
+
+  const safeWidth =
+    Number.isInteger(widthValue) && widthValue >= 0 ? widthValue : 0;
+  const safeHeight =
+    Number.isInteger(heightValue) && heightValue >= 0 ? heightValue : 0;
+
+  minWidthInput.value = String(safeWidth);
+  minHeightInput.value = String(safeHeight);
+
+  committedMinWidth = safeWidth;
+  committedMinHeight = safeHeight;
+}
+
 // ===============================
 // 拡張子判定
 // ===============================
@@ -69,6 +105,8 @@ function createCard(record: ImageRecord): void {
   const div = document.createElement("div");
   div.className = "item";
   div.dataset.ext = record.ext;
+  div.dataset.width = "0";
+  div.dataset.height = "0";
 
   const img = document.createElement("img");
   img.className = "thumb";
@@ -79,6 +117,9 @@ function createCard(record: ImageRecord): void {
     record.naturalWidth = img.naturalWidth;
     record.naturalHeight = img.naturalHeight;
     record.isValid = true;
+    div.dataset.width = String(record.naturalWidth);
+    div.dataset.height = String(record.naturalHeight);
+    applyFilters();
   };
 
   img.onerror = () => {
@@ -96,6 +137,83 @@ function createCard(record: ImageRecord): void {
   div.appendChild(img);
   grid.appendChild(div);
 }
+
+// ===============================
+// フィルター適用処理
+// ===============================
+function applyFilters(): void {
+  const hideSvg = filterSvgCheckbox.checked;
+  const hideGif = filterGifCheckbox.checked;
+
+  const items = grid.querySelectorAll<HTMLDivElement>(".item");
+
+  items.forEach((item) => {
+    const ext = item.dataset.ext ?? "";
+    const width = Number(item.dataset.width ?? "0");
+    const height = Number(item.dataset.height ?? "0");
+
+    let hidden = false;
+
+    if (hideSvg && ext === "svg") {
+      hidden = true;
+    }
+
+    if (hideGif && ext === "gif") {
+      hidden = true;
+    }
+
+    if (width < committedMinWidth || height < committedMinHeight) {
+      hidden = true;
+    }
+
+    item.style.display = hidden ? "none" : "";
+  });
+}
+
+// ===============================
+// フィルターイベント
+// ===============================
+// SVG チェックボックス変更時: SVG 画像を非表示にする
+filterSvgCheckbox.addEventListener("change", applyFilters);
+// GIF チェックボックス変更時: GIF 画像を非表示にする
+filterGifCheckbox.addEventListener("change", applyFilters);
+
+// 「適用」ボタン押下時: 入力値を整えてサイズフィルターを再評価する
+applySizeFilterButton.addEventListener("click", () => {
+  commitMinSizeFilter();
+  applyFilters();
+});
+
+// 入力直前に 0 以上の整数以外を止める
+minWidthInput.addEventListener("beforeinput", (event: InputEvent) => {
+  const inserted = event.data ?? "";
+  if (inserted && /\D/.test(inserted)) {
+    event.preventDefault();
+  }
+});
+minHeightInput.addEventListener("beforeinput", (event: InputEvent) => {
+  const inserted = event.data ?? "";
+  if (inserted && /\D/.test(inserted)) {
+    event.preventDefault();
+  }
+});
+
+// 横幅 Enter 時: 空欄なら 0 を補完してサイズフィルターを再適用する
+minWidthInput.addEventListener("keydown", (event: KeyboardEvent) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    commitMinSizeFilter();
+    applyFilters();
+  }
+});
+// 縦幅 Enter 時: 空欄なら 0 を補完してサイズフィルターを再適用する
+minHeightInput.addEventListener("keydown", (event: KeyboardEvent) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    commitMinSizeFilter();
+    applyFilters();
+  }
+});
 
 // ===============================
 // 画像一覧の読み込み
