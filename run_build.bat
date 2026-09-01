@@ -6,4 +6,6 @@ if exist dist (
     rmdir /s /q dist
 )
 
-npm run dev || pause
+call npm run build
+copy manifest.json dist\manifest.json
+call tree_repository.bat

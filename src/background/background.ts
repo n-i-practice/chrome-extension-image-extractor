@@ -1,6 +1,3 @@
-// content script のビルド後パスを Vite が解決してくれる
-import contentScriptPath from "../content/content.ts?script";
-
 // Chrome API の型を使うために @types/chrome が必要
 // npm install --save-dev @types/chrome
 
@@ -35,7 +32,7 @@ chrome.action.onClicked.addListener(async () => {
     // content.js をタブに注入して実行
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: [contentScriptPath],
+      files: ["scripts/content.js"],
     });
   }
 });
@@ -50,7 +47,7 @@ chrome.runtime.onMessage.addListener(
         console.log("saved to session");
 
         chrome.tabs.create({
-          url: chrome.runtime.getURL("src/viewer/viewer.html"),
+          url: chrome.runtime.getURL("viewer/viewer.html"),
           active: true,
         });
       });

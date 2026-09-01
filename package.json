@@ -9,7 +9,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build:esbuild": "node build/esbuild.config.js",
+    "build:vite": "vite build",
+    "build": "npm run build:esbuild && npm run build:vite"
   },
   "repository": {
     "type": "git",
@@ -24,8 +26,8 @@
   },
   "homepage": "https://github.com/n-i-practice/chrome-extension-image-extractor#readme",
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.0.0-beta.33",
     "@types/chrome": "^0.2.7",
+    "esbuild": "^0.28.2",
     "vite": "^8.2.2"
   }
 }
