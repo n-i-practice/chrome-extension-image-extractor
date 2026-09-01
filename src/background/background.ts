@@ -1,6 +1,8 @@
-// 末尾に「?script」を付けて content.js をインポートします
-// これにより、Viteが開発/本番に合わせて自動的に「正しい出力パス」を文字列として返してくれます
-import contentScriptPath from "../content/content.js?script";
+// content script のビルド後パスを Vite が解決してくれる
+import contentScriptPath from "../content/content.ts?script";
+
+// Chrome API の型を使うために @types/chrome が必要
+// npm install --save-dev @types/chrome
 
 // 拡張アイコンがクリックされたときの処理
 chrome.action.onClicked.addListener(async () => {
@@ -20,7 +22,8 @@ chrome.action.onClicked.addListener(async () => {
     target: { tabId: tab.id },
     func: () => typeof window.extractImages === "function",
   });
-  const hasFunction = checks?.[0]?.result;
+
+  const hasFunction: boolean = Boolean(checks?.[0]?.result);
 
   if (hasFunction) {
     // content.js がすでにタブに注入されている場合は、直接関数を呼び出す
@@ -29,7 +32,7 @@ chrome.action.onClicked.addListener(async () => {
       func: () => window.extractImages(),
     });
   } else {
-    // content.js をタブに注入して実行}
+    // content.js をタブに注入して実行
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: [contentScriptPath],
@@ -38,19 +41,19 @@ chrome.action.onClicked.addListener(async () => {
 });
 
 // content.js からのメッセージ受信（抽出した画像URL一覧）
-chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === "image-urls") {
-    console.log("Received image URLs:", message.payload);
+chrome.runtime.onMessage.addListener(
+  (message: { type?: string; payload?: string[] }) => {
+    if (message?.type === "image-urls") {
+      console.log("Received image URLs:", message.payload);
 
-    // 画像一覧を session storage に保存（viewer が読み取る）
-    chrome.storage.session.set({ images: message.payload }).then(() => {
-      console.log("saved to session");
+      chrome.storage.session.set({ images: message.payload }).then(() => {
+        console.log("saved to session");
 
-      // viewer.html を新しいタブで開く
-      chrome.tabs.create({
-        url: chrome.runtime.getURL("src/viewer/viewer.html"),
-        active: true,
+        chrome.tabs.create({
+          url: chrome.runtime.getURL("src/viewer/viewer.html"),
+          active: true,
+        });
       });
-    });
-  }
-});
+    }
+  },
+);

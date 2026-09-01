@@ -5,13 +5,14 @@
  * - descriptor がない場合 → 先頭の URL
  * - 相対パスは必ず絶対 URL に変換する
  */
-export function getLargestFromSrcset(srcset) {
+
+export function getLargestFromSrcset(srcset: string): string | null {
   if (!srcset) {
     return null;
   }
 
-  const items = srcset.split(",");
-  const candidates = [];
+  const items: string[] = srcset.split(",");
+  const candidates: { url: string; value: number }[] = [];
 
   for (const raw of items) {
     const trimmed = raw.trim();
@@ -24,7 +25,7 @@ export function getLargestFromSrcset(srcset) {
     const descriptor = parts[1];
 
     // 相対パス → 絶対 URL に変換
-    let url;
+    let url: string;
     try {
       url = new URL(rawUrl, location.href).href;
     } catch {
@@ -37,7 +38,7 @@ export function getLargestFromSrcset(srcset) {
       return url;
     }
 
-    let value = null;
+    let value: number | null = null;
 
     if (descriptor.endsWith("w")) {
       const num = parseInt(descriptor.slice(0, -1), 10);

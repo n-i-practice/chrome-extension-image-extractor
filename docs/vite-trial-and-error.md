@@ -200,3 +200,57 @@ if (hasFunction) {
   background の window と共有されないことを常に意識する。
 - Vite＋CRXJS のビルドは「manifest に書かれていないファイルは出力されない」点が重要。
 - 動的注入は「初回注入」「2回目以降」の分岐が最も安定する。
+
+---
+
+## 6. TypeScript 化後の現在の状態メモ
+
+### 現在の構成
+
+本番・開発両方を意識した構成に整理した。主な変更点は以下の通り。
+
+- JavaScript の `background.js` / `content.js` / `viewer.js` を削除し、
+  TypeScript 版の `background.ts` / `content.ts` / `viewer.ts` を採用
+- `manifest.json` の `background.service_worker` を `.ts` に更新
+- `tsconfig.json` を追加して、TypeScript の型チェックを有効化
+- `@types/chrome` を導入して Chrome API の型定義を利用
+- `vite.config.js` で CRXJS プラグインを統合し、Chrome 拡張向けの Vite ビルドに対応
+
+### ビルド環境の意図
+
+今回の修正で狙ったのは「拡張機能本体を JS ではなく TS で安全に書く」ことと、
+「Vite + CRXJS が拡張機能のファイル解決を正しく行うようにする」ことだった。
+
+- `background.ts` 側では `import contentScriptPath from "../content/content.ts?script";` を使い、
+  開発時と本番時で path 解決の差異を吸収する
+- `content.ts` 側では `window.extractImages` をグローバルに登録し、
+  初回注入時と 2 回目以降の実行を分岐させる
+- `viewer.ts` 側では `chrome.storage.session.get("images")` を使い、
+  抽出した URL 一覧を viewer へ受け渡す構造に整理した
+
+### 今回の設計判断
+
+- `content_scripts` は manifest 上から削除し、
+  「アイコン押下時のみ動的注入」という MV3 の推奨パターンに統一
+- 抽出ロジックを `extractImages()` に切り出したことで、
+  初回注入後の再利用ができるようにした
+- TypeScript にすることで、Chrome API と DOM API のアクセスをより安全に記述できるようになった
+
+### 現在の実運用状態
+
+現在の環境では `npm run dev` は通っており、
+開発サーバー起動と CRXJS による拡張開発フローは成立している。
+一方で、本番用の `npm run build` は別の課題が残っており、
+そこは本番ビルド専用のパス解決や出力設定の見直しが必要である。
+
+つまり、この時点では「開発動作は確認できているが、
+本番ビルドの最適化・安定化が残っている」という状態である。
+
+### まとめ
+
+この後の作業では、
+「TypeScript 化」「Chrome 拡張の MV3 設計」「Vite / CRXJS のファイル解決」
+の 3 点をまとめて管理できる状態になっている。  
+そのため、今後の修正は本番ビルド向けの設定整備が中心になる。
+
+---

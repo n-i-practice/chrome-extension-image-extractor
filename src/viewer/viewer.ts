@@ -5,40 +5,53 @@ const ViewerState = {
   GRID: "grid", // 一覧表示
   ZOOM: "zoom", // 拡大表示
   ORIGINAL: "original", // 原寸大表示（ドラッグ可能）
-};
+} as const;
 
-let viewerState = ViewerState.GRID;
+type ViewerStateType = (typeof ViewerState)[keyof typeof ViewerState];
+let viewerState: ViewerStateType = ViewerState.GRID;
 
 // ===============================
 // DOM 要素
 // ===============================
-const modal = document.getElementById("modal");
-const modalImg = document.getElementById("modal-img");
-const overlay = document.getElementById("overlay");
-const closeBtn = document.getElementById("close-btn");
-const zoomBtn = document.getElementById("zoom-btn");
-const zoomInIcon = document.getElementById("zoom-in-icon");
-const zoomOutIcon = document.getElementById("zoom-out-icon");
-const grid = document.getElementById("grid");
-const info = document.getElementById("info");
+const modal = document.getElementById("modal") as HTMLElement;
+const modalImg = document.getElementById("modal-img") as HTMLImageElement;
+const overlay = document.getElementById("overlay") as HTMLElement;
+const closeBtn = document.getElementById("close-btn") as HTMLElement;
+const zoomBtn = document.getElementById("zoom-btn") as HTMLElement;
+const zoomInIcon = document.getElementById("zoom-in-icon") as HTMLElement;
+const zoomOutIcon = document.getElementById("zoom-out-icon") as HTMLElement;
+const grid = document.getElementById("grid") as HTMLElement;
+const info = document.getElementById("info") as HTMLElement;
 
 // ===============================
 // 拡張子判定
 // ===============================
-function getExtension(url) {
+function getExtension(url: string): string {
   try {
     const pathname = new URL(url).pathname;
-    const ext = pathname.split(".").pop().toLowerCase();
-    return ext || "";
+    const ext = pathname.split(".").pop()?.toLowerCase() ?? "";
+    return ext;
   } catch {
     return "";
   }
 }
 
 // ===============================
+// ImageRecord 型
+// ===============================
+interface ImageRecord {
+  id: string;
+  src: string;
+  ext: string;
+  naturalWidth: number;
+  naturalHeight: number;
+  isValid: boolean;
+}
+
+// ===============================
 // ImageRecord の生成（v1 必須項目のみ）
 // ===============================
-function createImageRecord(url) {
+function createImageRecord(url: string): ImageRecord {
   return {
     id: crypto.randomUUID(), // v1必須
     src: url, // v1必須
@@ -52,7 +65,7 @@ function createImageRecord(url) {
 // ===============================
 // カード生成
 // ===============================
-function createCard(record) {
+function createCard(record: ImageRecord): void {
   const div = document.createElement("div");
   div.className = "item";
   div.dataset.ext = record.ext;
@@ -87,7 +100,9 @@ function createCard(record) {
 // ===============================
 // 画像一覧の読み込み
 // ===============================
-chrome.storage.session.get("images").then(({ images }) => {
+chrome.storage.session.get("images").then((result: { images?: string[] }) => {
+  const images = result.images ?? [];
+
   if (!images || images.length === 0) {
     info.textContent = "画像がありません";
     return;
@@ -95,7 +110,7 @@ chrome.storage.session.get("images").then(({ images }) => {
 
   info.textContent = `${images.length} 件の画像`;
 
-  images.forEach((url) => {
+  images.forEach((url: string) => {
     const record = createImageRecord(url);
     createCard(record);
   });
@@ -127,7 +142,7 @@ let startY = 0;
 let imgX = 0;
 let imgY = 0;
 
-modalImg.addEventListener("mousedown", (e) => {
+modalImg.addEventListener("mousedown", (e: MouseEvent) => {
   if (viewerState !== ViewerState.ORIGINAL) return;
 
   e.preventDefault();
@@ -144,7 +159,7 @@ modalImg.addEventListener("mousedown", (e) => {
   imgY = rect.top;
 });
 
-document.addEventListener("mousemove", (e) => {
+document.addEventListener("mousemove", (e: MouseEvent) => {
   if (!isDragging) return;
 
   const dx = e.clientX - startX;
@@ -189,7 +204,7 @@ document.addEventListener("mouseup", () => {
 // ===============================
 // 状態遷移：GRID
 // ===============================
-function enterGridState() {
+function enterGridState(): void {
   viewerState = ViewerState.GRID;
   modal.classList.add("hidden");
 }
@@ -197,7 +212,7 @@ function enterGridState() {
 // ===============================
 // 状態遷移：ZOOM
 // ===============================
-function enterZoomState() {
+function enterZoomState(): void {
   viewerState = ViewerState.ZOOM;
 
   modalImg.classList.remove("original");
@@ -218,7 +233,7 @@ function enterZoomState() {
 // ===============================
 // 状態遷移：ORIGINAL
 // ===============================
-function enterOriginalState() {
+function enterOriginalState(): void {
   viewerState = ViewerState.ORIGINAL;
 
   modalImg.classList.add("original");

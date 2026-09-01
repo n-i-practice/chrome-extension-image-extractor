@@ -25,6 +25,7 @@
   "homepage": "https://github.com/n-i-practice/chrome-extension-image-extractor#readme",
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.33",
+    "@types/chrome": "^0.2.7",
     "vite": "^8.2.2"
   }
 }

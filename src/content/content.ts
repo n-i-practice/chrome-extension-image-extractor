@@ -1,13 +1,16 @@
-import { getLargestFromSrcset } from "./extractors/srcset.js";
+import { getLargestFromSrcset } from "./extractors/srcset";
 
-function extractImages() {
+// Chrome API の型を使うために @types/chrome が必要
+// npm install --save-dev @types/chrome
+
+function extractImages(): void {
   // ページ内のすべての <img> 要素を取得
-  const imgs = Array.from(document.querySelectorAll("img"));
-  const srcList = [];
+  const imgs: HTMLImageElement[] = Array.from(document.querySelectorAll("img"));
+  const srcList: string[] = [];
 
   imgs.forEach((img) => {
-    const srcset = img.getAttribute("srcset");
-    let bestSrc = null;
+    const srcset: string | null = img.getAttribute("srcset");
+    let bestSrc: string | null = null;
 
     if (srcset) {
       bestSrc = getLargestFromSrcset(srcset);
@@ -30,6 +33,12 @@ function extractImages() {
 }
 
 // background から呼び出せるように window に登録
+declare global {
+  interface Window {
+    extractImages: () => void;
+  }
+}
+
 window.extractImages = extractImages;
 
 // function未登録時の自動実行
