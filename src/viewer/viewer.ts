@@ -39,6 +39,9 @@ const minHeightInput = document.getElementById(
 const applySizeFilterButton = document.getElementById(
   "apply-size-filter",
 ) as HTMLButtonElement;
+const clearSizeFilterButton = document.getElementById(
+  "clear-size-filter",
+) as HTMLButtonElement;
 
 // フィルター用変数
 // 適用中の最小サイズの値を保持する。入力中の値と適用後の値を分けて扱う。
@@ -203,6 +206,12 @@ applySizeFilterButton.addEventListener("click", () => {
   updateFilterInfo();
 });
 
+// 「クリア」ボタン押下時: 入力値だけを 0 に戻し、フィルターは再適用しない
+clearSizeFilterButton.addEventListener("click", () => {
+  minWidthInput.value = "0";
+  minHeightInput.value = "0";
+});
+
 // 入力直前に 0 以上の整数以外を止める
 minWidthInput.addEventListener("beforeinput", (event: InputEvent) => {
   const inserted = event.data ?? "";
@@ -215,6 +224,14 @@ minHeightInput.addEventListener("beforeinput", (event: InputEvent) => {
   if (inserted && /\D/.test(inserted)) {
     event.preventDefault();
   }
+});
+
+// フォーカス時に入力値を全選択する
+minWidthInput.addEventListener("focus", () => {
+  minWidthInput.select();
+});
+minHeightInput.addEventListener("focus", () => {
+  minHeightInput.select();
 });
 
 // 横幅 Enter 時: 空欄なら 0 を補完してサイズフィルターを再適用する
@@ -235,6 +252,9 @@ minHeightInput.addEventListener("keydown", (event: KeyboardEvent) => {
     updateFilterInfo();
   }
 });
+
+// 初期表示時にも適用中の最小サイズを表示する
+updateFilterInfo();
 
 // ===============================
 // 画像一覧の読み込み

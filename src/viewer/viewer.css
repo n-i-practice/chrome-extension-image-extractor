@@ -83,7 +83,8 @@ header {
   font-size: 14px;
 }
 
-#apply-size-filter {
+#apply-size-filter,
+#clear-size-filter {
   padding: 4px 10px;
   font-size: 13px;
   cursor: pointer;
