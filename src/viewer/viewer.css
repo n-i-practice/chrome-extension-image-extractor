@@ -1,9 +1,9 @@
 /* 全体のベース */
 body {
   margin: 0;
-  padding: 16px;
+  padding: 20px 40px;
   font-family: sans-serif;
-  background: #fafafa;
+  background: #e1e1e1;
 }
 
 /* タイトルと情報表示 */
@@ -11,48 +11,59 @@ header {
   margin-bottom: 20px;
 }
 
-h1 {
-  margin: 0 0 8px;
-  font-size: 20px;
-  font-weight: bold;
-}
-
 #info {
-  margin: 0;
-  color: #666;
-  font-size: 14px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 4px;
 }
 
-/* 画像一覧のグリッド */
+#filter-summary {
+  margin-left: 20px; /* インデント */
+  margin-bottom: 12px;
+}
+
+#filter-summary p {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 2px 0;
+}
+
+/* フィルター */
 .filters {
-  display: flex;
+  margin-top: 24px;
+  padding: 16px;
+  display: inline-block;
   flex-direction: column;
   gap: 12px;
-  margin-top: 12px;
+  background: #f7f7f7;
+  border-radius: 8px;
 }
 
-.filters > div {
+.size-filter-group,
+.ext-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.size-filter-title,
+.ext-filter-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.size-filter-row,
+.ext-filter-row {
+  margin-left: 20px; /* インデント */
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 12px;
-  align-items: center;
 }
 
-.size-filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-.size-filter-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.filters label {
+.ext-filter-row label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -235,4 +246,12 @@ h1 {
     15px 15px; /* 「0 0」と1マス（1色）の大きさをそれぞれ指定 */
   background-size: 30px 30px; /* 1マス分の倍の大きさを指定 */
   background-color: #f0f0f0; /* 透過部分の背景色 */
+}
+
+.filters {
+  display: inline-block;
+  padding: 16px;
+  background: #f7f7f7;
+  border-radius: 8px;
+  margin-top: 20px;
 }

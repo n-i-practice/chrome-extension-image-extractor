@@ -8,15 +8,21 @@
 
   <body>
     <header>
-      <h1>画像一覧</h1>
+      <!-- フィルター前の件数 -->
       <p id="info"></p>
+
+      <!-- 適用中のフィルター情報 -->
+      <div id="filter-summary">
+        <p id="filter-info"></p>
+        <p id="visible-count"></p>
+      </div>
 
       <!-- フィルター -->
       <div class="filters">
-        <div class="size-filter-row">
-          <div class="size-filter-controls">
-            <!-- TODO: 最小サイズフィルターの「現在適用中の閾値」を表示する UI を追加する
-                 SVG/GIF はチェック状態で分かるため、最小サイズだけは明示表示したほうが理解しやすい -->
+        <div class="size-filter-group">
+          <p class="size-filter-title">最小サイズ（px）</p>
+
+          <div class="size-filter-row">
             <label class="size-filter-input">
               横
               <input
@@ -39,18 +45,23 @@
                 inputmode="numeric"
               />
             </label>
-            <button type="button" id="apply-size-filter">適用</button>
+            <button id="apply-size-filter">適用</button>
           </div>
         </div>
-        <div>
-          <label>
-            <input type="checkbox" id="filter-svg" />
-            SVG を非表示
-          </label>
-          <label>
-            <input type="checkbox" id="filter-gif" />
-            GIF を非表示
-          </label>
+
+        <div class="ext-filter-group">
+          <p class="ext-filter-title">拡張子フィルター</p>
+
+          <div class="ext-filter-row">
+            <label>
+              <input type="checkbox" id="filter-svg" />
+              SVG を非表示
+            </label>
+            <label>
+              <input type="checkbox" id="filter-gif" />
+              GIF を非表示
+            </label>
+          </div>
         </div>
       </div>
     </header>

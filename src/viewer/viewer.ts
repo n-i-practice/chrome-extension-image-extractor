@@ -22,6 +22,8 @@ const zoomInIcon = document.getElementById("zoom-in-icon") as HTMLElement;
 const zoomOutIcon = document.getElementById("zoom-out-icon") as HTMLElement;
 const grid = document.getElementById("grid") as HTMLElement;
 const info = document.getElementById("info") as HTMLElement;
+const filterInfo = document.getElementById("filter-info") as HTMLElement;
+const visibleCount = document.getElementById("visible-count") as HTMLElement;
 
 // フィルター用チェックボックス
 const filterSvgCheckbox = document.getElementById(
@@ -147,6 +149,8 @@ function applyFilters(): void {
 
   const items = grid.querySelectorAll<HTMLDivElement>(".item");
 
+  let visible = 0;
+
   items.forEach((item) => {
     const ext = item.dataset.ext ?? "";
     const width = Number(item.dataset.width ?? "0");
@@ -167,7 +171,21 @@ function applyFilters(): void {
     }
 
     item.style.display = hidden ? "none" : "";
+
+    if (!hidden) {
+      visible++;
+    }
   });
+
+  // 表示中件数を更新
+  visibleCount.textContent = `表示中：${visible}件`;
+}
+
+// ===============================
+// フィルター情報の更新
+// ===============================
+function updateFilterInfo(): void {
+  filterInfo.textContent = `適用中：横 ≥ ${committedMinWidth}px / 縦 ≥ ${committedMinHeight}px`;
 }
 
 // ===============================
@@ -182,6 +200,7 @@ filterGifCheckbox.addEventListener("change", applyFilters);
 applySizeFilterButton.addEventListener("click", () => {
   commitMinSizeFilter();
   applyFilters();
+  updateFilterInfo();
 });
 
 // 入力直前に 0 以上の整数以外を止める
@@ -204,6 +223,7 @@ minWidthInput.addEventListener("keydown", (event: KeyboardEvent) => {
     event.preventDefault();
     commitMinSizeFilter();
     applyFilters();
+    updateFilterInfo();
   }
 });
 // 縦幅 Enter 時: 空欄なら 0 を補完してサイズフィルターを再適用する
@@ -212,6 +232,7 @@ minHeightInput.addEventListener("keydown", (event: KeyboardEvent) => {
     event.preventDefault();
     commitMinSizeFilter();
     applyFilters();
+    updateFilterInfo();
   }
 });
 
