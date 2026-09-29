@@ -48,8 +48,8 @@ export function getLargestFromSrcset(srcset: string): string | null {
     } else if (descriptor.endsWith("x")) {
       const num = parseFloat(descriptor.slice(0, -1));
       if (!Number.isNaN(num)) {
-        // w と比較しやすいようにスケール
-        value = num * 1000;
+        // w と比較するため、基準幅 100 CSS px を仮定してスケール（Nx ≈ N*100w）
+        value = num * 100;
       }
     }
 

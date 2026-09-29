@@ -18,4 +18,8 @@ Promise.all([
     format: "iife",
     target: "es2022",
   }),
-]).catch(() => process.exit(1));
+])
+  .then(() => {
+    fs.copyFileSync("manifest.json", "dist/manifest.json");
+  })
+  .catch(() => process.exit(1));
