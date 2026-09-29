@@ -12,7 +12,7 @@ export const en: Messages = {
   "filter.hideGif": "Hide GIF",
   "status.imageCount": "{count} images",
   "status.noImages": "No images found",
-  "status.visibleCount": "Showing: {count}",
+  "status.visibleCount": "Showing: {count} images",
   "status.filterActive":
     "Active: width ≥ {width}px / height ≥ {height}px",
   "lang.label": "Language",
