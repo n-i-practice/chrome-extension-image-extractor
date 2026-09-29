@@ -1,5 +1,6 @@
 const esbuild = require("esbuild");
 const fs = require("fs");
+const path = require("path");
 
 fs.mkdirSync("dist/scripts", { recursive: true });
 
@@ -21,5 +22,7 @@ Promise.all([
 ])
   .then(() => {
     fs.copyFileSync("manifest.json", "dist/manifest.json");
+    // Chrome の拡張名 / 説明 / アクション用。viewer の辞書とは別系統。
+    fs.cpSync("_locales", path.join("dist", "_locales"), { recursive: true });
   })
   .catch(() => process.exit(1));

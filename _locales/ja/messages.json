@@ -1,0 +1,14 @@
+{
+  "appName": {
+    "message": "Image Extractor",
+    "description": "Chrome に表示される拡張機能名"
+  },
+  "appDescription": {
+    "message": "ビューアを開き、アクティブなタブから画像 URL を抽出します。",
+    "description": "拡張機能の説明"
+  },
+  "actionTitle": {
+    "message": "Image Extractor ビューアを開く",
+    "description": "ツールバーのアクションツールチップ"
+  }
+}

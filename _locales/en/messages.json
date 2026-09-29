@@ -1,0 +1,14 @@
+{
+  "appName": {
+    "message": "Image Extractor",
+    "description": "Extension name shown in Chrome"
+  },
+  "appDescription": {
+    "message": "Open a viewer tab and extract image URLs from the active tab.",
+    "description": "Extension description"
+  },
+  "actionTitle": {
+    "message": "Open Image Extractor Viewer",
+    "description": "Toolbar action tooltip"
+  }
+}
