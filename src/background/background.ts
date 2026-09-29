@@ -1,3 +1,5 @@
+import { normalizeAndDedupeUrls } from "../shared/normalize-url";
+
 // Chrome API の型を使うために @types/chrome が必要
 // npm install --save-dev @types/chrome
 
@@ -41,9 +43,11 @@ chrome.action.onClicked.addListener(async () => {
 chrome.runtime.onMessage.addListener(
   (message: { type?: string; payload?: string[] }) => {
     if (message?.type === "image-urls") {
-      console.log("Received image URLs:", message.payload);
+      // content 側でも正規化しているが、受け取り側でも保険として再適用する
+      const images = normalizeAndDedupeUrls(message.payload ?? []);
+      console.log("Received image URLs:", images.length);
 
-      chrome.storage.session.set({ images: message.payload }).then(() => {
+      chrome.storage.session.set({ images }).then(() => {
         console.log("saved to session");
 
         chrome.tabs.create({

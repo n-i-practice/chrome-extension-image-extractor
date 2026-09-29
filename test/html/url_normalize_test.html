@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>URL 正規化・重複除外テスト</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      section {
+        margin-bottom: 40px;
+      }
+      img {
+        display: block;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        max-width: 200px;
+        height: auto;
+      }
+      .box {
+        width: 200px;
+        height: 200px;
+        border: 1px solid #ccc;
+        background-size: cover;
+        background-position: center;
+      }
+      .expect {
+        font-size: 14px;
+        color: #555;
+        margin-top: 4px;
+      }
+      .note {
+        background: #f5f5f5;
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin-bottom: 24px;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>URL 正規化・重複除外テスト</h1>
+    <p>
+      Image Extractor の URL 正規化・重複除外を検証するページです。拡張を実行し、viewer
+      の件数と URL 一覧を確認してください。
+    </p>
+
+    <div class="note">
+      <strong>全体の期待（重複除外後）</strong><br />
+      少なくとも次の 3 URL は残る（パスは絶対 URL に正規化される）:<br />
+      ・<code>100x100.png</code>（相対表記の違い・img / background の重複は 1 件）<br />
+      ・<code>200x200.png?v=1</code> と <code>200x200.png?v=2</code>（クエリ違いは別物）<br />
+      ・<code>300x300.png</code><br />
+      ・<code>400x400.png</code>（srcset 最大候補）<br />
+      余分な重複（同じ正規化 URL）は出ないこと。
+    </div>
+
+    <section>
+      <h2>① 同じ相対パスの &lt;img&gt; を複数</h2>
+      <img src="../img/100x100.png" alt="dup a" />
+      <img src="../img/100x100.png" alt="dup b" />
+      <div class="expect">期待：100x100.png は 1 件</div>
+    </section>
+
+    <section>
+      <h2>② 相対パスの書き方が違うが同じファイル</h2>
+      <!-- ./ 付きと無し。正規化後は同一になる想定 -->
+      <img src="../img/100x100.png" alt="rel plain" />
+      <img src="./../img/100x100.png" alt="rel with dot" />
+      <div class="expect">期待：①と合わせて 100x100.png は依然 1 件</div>
+    </section>
+
+    <section>
+      <h2>③ &lt;img&gt; と background-image が同じ URL</h2>
+      <img src="../img/100x100.png" alt="img same as bg" />
+      <div
+        class="box"
+        style="background-image: url('../img/100x100.png')"
+      ></div>
+      <div class="expect">期待：100x100.png は依然 1 件（抽出経路が違っても重複除外）</div>
+    </section>
+
+    <section>
+      <h2>④ クエリが違う（仕様どおり別物）</h2>
+      <img src="../img/200x200.png?v=1" alt="query v1" />
+      <img src="../img/200x200.png?v=2" alt="query v2" />
+      <div class="expect">
+        期待：200x200.png?v=1 と 200x200.png?v=2 の 2 件（クエリ違いは別 URL）
+      </div>
+    </section>
+
+    <section>
+      <h2>⑤ 別画像（重複しない）</h2>
+      <img src="../img/300x300.png" alt="unique 300" />
+      <div class="expect">期待：300x300.png が 1 件追加</div>
+    </section>
+
+    <section>
+      <h2>⑥ srcset の最大候補が別画像と一致しないこと</h2>
+      <img
+        src="../img/200x200.png"
+        srcset="
+          ../img/100x100.png 100w,
+          ../img/400x400.png 400w
+        "
+        alt="srcset picks 400"
+      />
+      <div class="expect">
+        期待：最大 w の 400x400.png が 1 件。src の 200x200.png（クエリなし）も別途 1
+        件になり得るが、?v=1/?v=2 とは別物。<br />
+        ※現行ロジックは srcset があればそれを優先し src は使わないため、このセクションからは
+        400x400.png のみ追加される想定。
+      </div>
+    </section>
+
+    <section>
+      <h2>⑦ 前後空白付き URL（属性値）</h2>
+      <!-- 一部ブラウザは trim するが、正規化側でも trim する -->
+      <img src="  ../img/300x300.png  " alt="padded spaces" />
+      <div class="expect">期待：300x300.png は⑤と合わせて 1 件</div>
+    </section>
+
+    <section>
+      <h2>まとめ（目安）</h2>
+      <div class="expect">
+        正規化・重複除外後のユニーク数の目安: <strong>5 件</strong><br />
+        1. 100x100.png<br />
+        2. 200x200.png?v=1<br />
+        3. 200x200.png?v=2<br />
+        4. 300x300.png<br />
+        5. 400x400.png<br />
+        （⑥で src も拾う実装に変わった場合はクエリなし 200x200.png が増えて 6 件）
+      </div>
+    </section>
+  </body>
+</html>

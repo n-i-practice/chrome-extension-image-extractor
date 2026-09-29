@@ -26,7 +26,7 @@
 - `<video poster>` の抽出
 - `<link rel="preload" as="image">` の抽出
 - debounce（300ms）による追加画像のバッチ処理
-- 抽出URLの正規化と重複除外
+- ~~抽出URLの正規化と重複除外~~（完了。`src/shared/normalize-url.ts`）
 - `blob:` / `data:` URL の抽出対応
 
 ### srcset の追加対応
@@ -49,7 +49,7 @@
 
 ## background 側の未実装・改善
 
-- 画像抽出結果のURL正規化と重複除外
+- ~~画像抽出結果のURL正規化と重複除外~~（完了。background でも再適用）
 - `chrome.storage.session` の保存件数上限への対応
 - session 保存失敗時の viewer へのフォールバック
 - 画像抽出処理・viewer 起動処理のエラー表示

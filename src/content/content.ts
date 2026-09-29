@@ -1,5 +1,6 @@
 import { extractBackgroundImages } from "./extractors/background-image";
 import { getLargestFromSrcset } from "./extractors/srcset";
+import { normalizeImageUrl } from "../shared/normalize-url";
 
 // Chrome API の型を使うために @types/chrome が必要
 // npm install --save-dev @types/chrome
@@ -7,16 +8,17 @@ import { getLargestFromSrcset } from "./extractors/srcset";
 function extractImages(): void {
   // 抽出した画像 URL の一覧（background に送る）
   const srcList: string[] = [];
-  // すでに追加済みの URL を記録し、重複追加を防ぐ
+  // 正規化後の URL を記録し、重複追加を防ぐ
   const seen = new Set<string>();
 
-  // URL が空、または既に追加済みならスキップする
+  // URL を正規化し、空・無効・既追加ならスキップする
   const addUrl = (url: string | null | undefined): void => {
-    if (!url || seen.has(url)) {
+    const normalized = normalizeImageUrl(url, location.href);
+    if (!normalized || seen.has(normalized)) {
       return;
     }
-    seen.add(url);
-    srcList.push(url);
+    seen.add(normalized);
+    srcList.push(normalized);
   };
 
   // ページ内のすべての <img> 要素を取得
