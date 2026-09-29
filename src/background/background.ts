@@ -1,11 +1,98 @@
 import { normalizeAndDedupeUrls } from "../shared/normalize-url";
 import {
   imagesSessionKey,
+  viewerRefsSessionKey,
   viewerTabSessionKey,
 } from "../shared/session-keys";
 
 // Chrome API の型を使うために @types/chrome が必要
 // npm install --save-dev @types/chrome
+
+/**
+ * viewerRefs の取得→更新→保存を直列化する。
+ * 同じ id への並行 register / unregister による上書きを防ぐ。
+ */
+let sessionOpQueue: Promise<void> = Promise.resolve();
+
+function enqueueSessionOp<T>(op: () => Promise<T>): Promise<T> {
+  const run = sessionOpQueue.then(op, op);
+  sessionOpQueue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+/**
+ * viewer タブを session id に紐づける。
+ * 同じ id を複数タブで開いている場合は参照一覧に積む。
+ * 登録直後にタブが既に閉じていればすぐ掃除する（create との競合対策）。
+ */
+function registerViewerTab(tabId: number, id: string): Promise<void> {
+  return enqueueSessionOp(async () => {
+    const tabKey = viewerTabSessionKey(tabId);
+    const refsKey = viewerRefsSessionKey(id);
+
+    const existing = await chrome.storage.session.get(refsKey);
+    const refs: number[] = Array.isArray(existing[refsKey])
+      ? (existing[refsKey] as number[]).filter((n) => typeof n === "number")
+      : [];
+    if (!refs.includes(tabId)) {
+      refs.push(tabId);
+    }
+
+    await chrome.storage.session.set({
+      [tabKey]: id,
+      [refsKey]: refs,
+    });
+
+    // tabs.create 直後〜対応表保存前に閉じられた場合への保険
+    try {
+      await chrome.tabs.get(tabId);
+    } catch {
+      // 同一キュー内で解除する（二重ロック回避）
+      await unregisterViewerTabUnlocked(tabId);
+    }
+  });
+}
+
+/**
+ * タブと session id の紐づけを外す。
+ * その id を参照するタブが無くなったときだけ images / refs を削除する。
+ */
+function unregisterViewerTab(tabId: number): Promise<void> {
+  return enqueueSessionOp(() => unregisterViewerTabUnlocked(tabId));
+}
+
+async function unregisterViewerTabUnlocked(tabId: number): Promise<void> {
+  const tabKey = viewerTabSessionKey(tabId);
+  const result = await chrome.storage.session.get(tabKey);
+  const id = result[tabKey];
+  if (typeof id !== "string" || !id) {
+    return;
+  }
+
+  const refsKey = viewerRefsSessionKey(id);
+  const refsResult = await chrome.storage.session.get(refsKey);
+  const refs: number[] = Array.isArray(refsResult[refsKey])
+    ? (refsResult[refsKey] as number[]).filter((n) => typeof n === "number")
+    : [];
+  const nextRefs = refs.filter((n) => n !== tabId);
+
+  if (nextRefs.length === 0) {
+    await chrome.storage.session.remove([
+      tabKey,
+      refsKey,
+      imagesSessionKey(id),
+    ]);
+    console.log("Removed session images (last viewer closed):", tabId, id);
+    return;
+  }
+
+  await chrome.storage.session.remove(tabKey);
+  await chrome.storage.session.set({ [refsKey]: nextRefs });
+  console.log("Detached viewer tab; session images kept:", tabId, id, nextRefs);
+}
 
 // 拡張アイコンがクリックされたときの処理
 chrome.action.onClicked.addListener(async () => {
@@ -43,9 +130,21 @@ chrome.action.onClicked.addListener(async () => {
   }
 });
 
-// content.js からのメッセージ受信（抽出した画像URL一覧）
+// content / viewer からのメッセージ
 chrome.runtime.onMessage.addListener(
-  (message: { type?: string; payload?: string[] }) => {
+  (
+    message: { type?: string; payload?: string[]; sessionId?: string },
+    sender,
+  ) => {
+    if (message?.type === "viewer-opened") {
+      const id = message.sessionId;
+      const tabId = sender.tab?.id;
+      if (typeof id === "string" && id && tabId != null) {
+        void registerViewerTab(tabId, id);
+      }
+      return;
+    }
+
     if (message?.type !== "image-urls") {
       return;
     }
@@ -70,27 +169,14 @@ chrome.runtime.onMessage.addListener(
         active: true,
       });
 
-      // SW 再起動後も掃除できるよう、対応表も session に残す
       if (tab.id != null) {
-        await chrome.storage.session.set({
-          [viewerTabSessionKey(tab.id)]: id,
-        });
+        await registerViewerTab(tab.id, id);
       }
     })();
   },
 );
 
-// viewer タブを閉じたら、その一覧だけ session から削除する（F5 では発火しない）
+// viewer タブを閉じたら参照を外す（F5 では発火しない）
 chrome.tabs.onRemoved.addListener((tabId) => {
-  void (async () => {
-    const tabKey = viewerTabSessionKey(tabId);
-    const result = await chrome.storage.session.get(tabKey);
-    const id = result[tabKey];
-    if (typeof id !== "string" || !id) {
-      return;
-    }
-
-    await chrome.storage.session.remove([tabKey, imagesSessionKey(id)]);
-    console.log("Removed session images for closed viewer tab:", tabId, id);
-  })();
+  void unregisterViewerTab(tabId);
 });

@@ -146,6 +146,10 @@ background → session:
 background → viewer:
   tabs.create({ url: "viewer/viewer.html?id=<id>" })
 
+viewer → background:
+  chrome.runtime.sendMessage({ type: "viewer-opened", sessionId })
+  （複製タブ含む。参照カウント登録用）
+
 viewer:
   URL の id から "images:<id>" を読み込む
 ```
@@ -160,10 +164,19 @@ viewer:
 - これにより、複数タブで拡張を実行しても一覧が取り違えられない
 - F5（同一タブのリロード）では tabId が変わらないため session は残し、同じ一覧を再表示する
 
+#### 同一 id を複数タブで開いた場合（タブ複製・URL 貼り付け）
+
+- viewer 起動時に `viewer-opened` で background へ登録する
+- `viewerRefs:<uuid>` に開いている tabId 一覧を保持する（参照カウント）
+- タブを閉じても、同じ id を参照するタブが残っている間は `images:<uuid>` を消さない
+- 最後の参照タブが閉じたときだけ `images:<uuid>` と refs を削除する
+
 #### タブを閉じたときの掃除
 
-- background が `viewerTab:<tabId> → <uuid>` を session に保持する
-- `chrome.tabs.onRemoved` で当該タブの `images:<uuid>` と `viewerTab:<tabId>` を削除する
+- background が `viewerTab:<tabId> → <uuid>` と `viewerRefs:<uuid>` を session に保持する
+- `chrome.tabs.onRemoved` で参照を外し、必要なら images を削除する
+- `tabs.create` 後の対応表登録と `onRemoved` の競合対策として、登録直後に `tabs.get` で生存確認し、既に閉じていればすぐ掃除する
+- 参照一覧（`viewerRefs`）の更新は background 内のキューで直列化し、同時開閉による上書きを防ぐ
 - ページの `beforeunload` では F5 と閉じるの区別が難しいため使わない
 - Chrome 終了時は `storage.session` 自体が消える（永続化されない）
 

@@ -322,6 +322,14 @@ async function init(): Promise<void> {
   refreshI18n();
 
   const sessionId = new URLSearchParams(location.search).get("id");
+  // 複製タブでも参照カウントに載せる（background が id ごとの生存管理をする）
+  if (sessionId) {
+    void chrome.runtime.sendMessage({
+      type: "viewer-opened",
+      sessionId,
+    });
+  }
+
   const imagesKey = sessionId ? imagesSessionKey(sessionId) : null;
   const result = imagesKey
     ? await chrome.storage.session.get(imagesKey)

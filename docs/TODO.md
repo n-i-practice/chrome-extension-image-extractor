@@ -50,7 +50,7 @@
 ## background 側の未実装・改善
 
 - ~~画像抽出結果のURL正規化と重複除外~~（完了。background でも再適用）
-- ~~viewer ごとの session キー分割とタブ閉じ時の削除~~（完了。`images:<id>` + `tabs.onRemoved`）
+- ~~viewer ごとの session キー分割とタブ閉じ時の削除~~（完了。`images:<id>` + 参照カウント + `tabs.onRemoved`。複製タブ／create 競合対策込み）
 - `chrome.storage.session` の保存件数上限への対応
 - session 保存失敗時の viewer へのフォールバック
 - 画像抽出処理・viewer 起動処理のエラー表示
