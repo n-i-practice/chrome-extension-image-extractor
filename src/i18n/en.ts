@@ -15,6 +15,11 @@ export const en: Messages = {
   "status.visibleCount": "Showing: {count} images",
   "status.filterActive":
     "Active: width ≥ {width}px / height ≥ {height}px",
+  "status.truncated":
+    "Showing the first {limit} of {total} images (session limit).",
+  "status.fallbackDelivery":
+    "Could not save to session. The list was sent temporarily; reload may clear it.",
+  "status.extractFailed": "Could not extract images from this page.",
   "lang.label": "Language",
   "lang.en": "English",
   "lang.ja": "日本語",

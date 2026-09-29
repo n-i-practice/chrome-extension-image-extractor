@@ -51,9 +51,9 @@
 
 - ~~画像抽出結果のURL正規化と重複除外~~（完了。background でも再適用）
 - ~~viewer ごとの session キー分割とタブ閉じ時の削除~~（完了。`images:<id>` + 参照カウント + `tabs.onRemoved`。複製タブ／create 競合対策込み）
-- `chrome.storage.session` の保存件数上限への対応
-- session 保存失敗時の viewer へのフォールバック
-- 画像抽出処理・viewer 起動処理のエラー表示
+- ~~`chrome.storage.session` の保存件数上限への対応~~（完了。最大 1500 件）
+- ~~session 保存失敗時の viewer へのフォールバック~~（完了。メッセージ受け渡し + 通知表示）
+- ~~画像抽出処理・viewer 起動処理のエラー表示~~（完了。注入失敗時に viewer で表示）
 
 ※ `open-image` メッセージによる新しいタブでの画像表示は、現行viewerではモーダル表示を採用しているためTODOから除外。
 

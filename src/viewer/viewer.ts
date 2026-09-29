@@ -6,7 +6,12 @@ import {
   setLocale,
   t,
 } from "../i18n";
-import { imagesSessionKey } from "../shared/session-keys";
+import { MAX_SESSION_IMAGES } from "../shared/limits";
+import {
+  imagesNoticeSessionKey,
+  imagesSessionKey,
+  type ImagesNotice,
+} from "../shared/session-keys";
 
 // ===============================
 // Viewer State Enum（表示状態の定義）
@@ -37,10 +42,13 @@ const visibleCount = document.getElementById("visible-count") as HTMLElement;
 const localeSelect = document.getElementById(
   "locale-select",
 ) as HTMLSelectElement;
+const noticesEl = document.getElementById("notices") as HTMLElement;
 
 /** 読み込み済み画像件数（言語切替時の件数表示再描画用） */
 let totalImageCount = 0;
 let imagesLoaded = false;
+let activeNotice: ImagesNotice | null = null;
+let pageError: "extract" | null = null;
 
 // フィルター用チェックボックス
 const filterSvgCheckbox = document.getElementById(
@@ -215,6 +223,10 @@ function updateInfoText(): void {
   if (!imagesLoaded) {
     return;
   }
+  if (pageError === "extract") {
+    info.textContent = t("status.extractFailed");
+    return;
+  }
   if (totalImageCount === 0) {
     info.textContent = t("status.noImages");
     return;
@@ -232,6 +244,35 @@ function updateModalAriaLabels(): void {
   }
 }
 
+function renderNotices(): void {
+  noticesEl.replaceChildren();
+  const hasNotice =
+    activeNotice?.delivery === "fallback" || activeNotice?.truncated;
+  if (!hasNotice) {
+    noticesEl.hidden = true;
+    return;
+  }
+
+  noticesEl.hidden = false;
+
+  if (activeNotice?.delivery === "fallback") {
+    const p = document.createElement("p");
+    p.className = "notice";
+    p.textContent = t("status.fallbackDelivery");
+    noticesEl.appendChild(p);
+  }
+
+  if (activeNotice?.truncated) {
+    const p = document.createElement("p");
+    p.className = "notice";
+    p.textContent = t("status.truncated", {
+      limit: MAX_SESSION_IMAGES,
+      total: activeNotice.originalCount,
+    });
+    noticesEl.appendChild(p);
+  }
+}
+
 /** 静的・動的文言を現在の locale で再適用する */
 function refreshI18n(): void {
   applyStaticI18n();
@@ -240,6 +281,55 @@ function refreshI18n(): void {
   updateFilterInfo();
   applyFilters();
   updateModalAriaLabels();
+  renderNotices();
+}
+
+function isImagesNotice(value: unknown): value is ImagesNotice {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.truncated === "boolean" &&
+    typeof v.originalCount === "number" &&
+    (v.delivery === "session" || v.delivery === "fallback")
+  );
+}
+
+function waitForFallbackImages(
+  sessionId: string,
+  timeoutMs: number,
+): Promise<{ images: string[]; notice: ImagesNotice | null }> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => {
+      chrome.runtime.onMessage.removeListener(handler);
+      resolve({ images: [], notice: null });
+    }, timeoutMs);
+
+    function handler(
+      message: {
+        type?: string;
+        sessionId?: string;
+        images?: string[];
+        notice?: ImagesNotice;
+      },
+    ): void {
+      if (
+        message?.type !== "fallback-images" ||
+        message.sessionId !== sessionId
+      ) {
+        return;
+      }
+      window.clearTimeout(timer);
+      chrome.runtime.onMessage.removeListener(handler);
+      resolve({
+        images: Array.isArray(message.images) ? message.images : [],
+        notice: isImagesNotice(message.notice) ? message.notice : null,
+      });
+    }
+
+    chrome.runtime.onMessage.addListener(handler);
+  });
 }
 
 // ===============================
@@ -321,7 +411,26 @@ async function init(): Promise<void> {
   await resolveLocale();
   refreshI18n();
 
-  const sessionId = new URLSearchParams(location.search).get("id");
+  const params = new URLSearchParams(location.search);
+  const errorParam = params.get("error");
+  if (errorParam === "extract") {
+    pageError = "extract";
+    imagesLoaded = true;
+    totalImageCount = 0;
+    updateInfoText();
+    renderNotices();
+    return;
+  }
+
+  const sessionId = params.get("id");
+  const delivery = params.get("delivery");
+
+  // fallback 受信 listener を viewer-opened より先に張る
+  const fallbackWait =
+    sessionId && delivery === "fallback"
+      ? waitForFallbackImages(sessionId, 8000)
+      : null;
+
   // 複製タブでも参照カウントに載せる（background が id ごとの生存管理をする）
   if (sessionId) {
     void chrome.runtime.sendMessage({
@@ -330,17 +439,26 @@ async function init(): Promise<void> {
     });
   }
 
-  const imagesKey = sessionId ? imagesSessionKey(sessionId) : null;
-  const result = imagesKey
-    ? await chrome.storage.session.get(imagesKey)
-    : {};
-  const images: string[] = imagesKey
-    ? ((result[imagesKey] as string[] | undefined) ?? [])
-    : [];
+  let images: string[] = [];
+  activeNotice = null;
+
+  if (fallbackWait) {
+    const fallback = await fallbackWait;
+    images = fallback.images;
+    activeNotice = fallback.notice;
+  } else if (sessionId) {
+    const imagesKey = imagesSessionKey(sessionId);
+    const noticeKey = imagesNoticeSessionKey(sessionId);
+    const result = await chrome.storage.session.get([imagesKey, noticeKey]);
+    images = (result[imagesKey] as string[] | undefined) ?? [];
+    const notice = result[noticeKey];
+    activeNotice = isImagesNotice(notice) ? notice : null;
+  }
 
   imagesLoaded = true;
   totalImageCount = images.length;
   updateInfoText();
+  renderNotices();
 
   if (images.length === 0) {
     return;

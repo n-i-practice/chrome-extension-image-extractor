@@ -15,6 +15,11 @@ export const ja: Messages = {
   "status.visibleCount": "表示中：{count}件",
   "status.filterActive":
     "適用中：横 ≥ {width}px / 縦 ≥ {height}px",
+  "status.truncated":
+    "件数上限のため、{total} 件中の先頭 {limit} 件のみ表示しています。",
+  "status.fallbackDelivery":
+    "session への保存に失敗したため、一時的に一覧を受け渡しました。再読み込みで消える場合があります。",
+  "status.extractFailed": "このページから画像を抽出できませんでした。",
   "lang.label": "言語",
   "lang.en": "English",
   "lang.ja": "日本語",

@@ -40,6 +40,30 @@ header {
   margin: 0;
 }
 
+.notices {
+  margin: 8px 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notice {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  background: #fff6e5;
+  border: 1px solid #e6c87a;
+  color: #5c4a1f;
+}
+
+.notice-error {
+  background: #fdecec;
+  border-color: #e2a0a0;
+  color: #6b2a2a;
+}
+
 #filter-summary {
   margin-left: 20px; /* インデント */
   margin-bottom: 12px;
