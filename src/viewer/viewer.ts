@@ -6,6 +6,7 @@ import {
   setLocale,
   t,
 } from "../i18n";
+import { imagesSessionKey } from "../shared/session-keys";
 
 // ===============================
 // Viewer State Enum（表示状態の定義）
@@ -320,8 +321,15 @@ async function init(): Promise<void> {
   await resolveLocale();
   refreshI18n();
 
-  const result = await chrome.storage.session.get("images");
-  const images = result.images ?? [];
+  const sessionId = new URLSearchParams(location.search).get("id");
+  const imagesKey = sessionId ? imagesSessionKey(sessionId) : null;
+  const result = imagesKey
+    ? await chrome.storage.session.get(imagesKey)
+    : {};
+  const images: string[] = imagesKey
+    ? ((result[imagesKey] as string[] | undefined) ?? [])
+    : [];
+
   imagesLoaded = true;
   totalImageCount = images.length;
   updateInfoText();

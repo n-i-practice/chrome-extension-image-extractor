@@ -135,20 +135,41 @@ ImageRecord {
 
 ```
 content → background:
-  chrome.runtime.sendMessage({ type: "images", payload: ImageRecord[] })
+  chrome.runtime.sendMessage({ type: "image-urls", payload: string[] })
+
+background → session:
+  chrome.storage.session.set({
+    "images:<id>": string[],   // 一覧本体
+    "viewerTab:<tabId>": "<id>" // タブ閉じ時の掃除用
+  })
 
 background → viewer:
-  chrome.storage.session.set({ images })
+  tabs.create({ url: "viewer/viewer.html?id=<id>" })
 
-viewer → background:
-  chrome.runtime.sendMessage({ type: "open-image", src })
+viewer:
+  URL の id から "images:<id>" を読み込む
 ```
 
 ### ● chrome.storage.session の扱い（重要）
 
-- 画像リストは viewer 起動時に session から読み込む
-- session の容量制限により、  
-  **画像保存上限は「最大 1500 件」** とする
+#### 通常経路（採用）
+
+- 抽出結果は **viewer インスタンスごとに別キー** で session に保存する
+- キー形式: `images:<uuid>`
+- viewer は `viewer.html?id=<uuid>` で開き、自分の id のキーだけを読む
+- これにより、複数タブで拡張を実行しても一覧が取り違えられない
+- F5（同一タブのリロード）では tabId が変わらないため session は残し、同じ一覧を再表示する
+
+#### タブを閉じたときの掃除
+
+- background が `viewerTab:<tabId> → <uuid>` を session に保持する
+- `chrome.tabs.onRemoved` で当該タブの `images:<uuid>` と `viewerTab:<tabId>` を削除する
+- ページの `beforeunload` では F5 と閉じるの区別が難しいため使わない
+- Chrome 終了時は `storage.session` 自体が消える（永続化されない）
+
+#### 容量・失敗時（未実装の方針）
+
+- session の容量制限により、**画像保存上限は「最大 1500 件」** とする
 - 保存失敗時は fallback として viewer に直接 message passing
 - SPA で画像が増え続ける場合は収集を打ち切る
 

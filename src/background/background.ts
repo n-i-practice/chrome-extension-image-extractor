@@ -1,4 +1,8 @@
 import { normalizeAndDedupeUrls } from "../shared/normalize-url";
+import {
+  imagesSessionKey,
+  viewerTabSessionKey,
+} from "../shared/session-keys";
 
 // Chrome API の型を使うために @types/chrome が必要
 // npm install --save-dev @types/chrome
@@ -42,19 +46,51 @@ chrome.action.onClicked.addListener(async () => {
 // content.js からのメッセージ受信（抽出した画像URL一覧）
 chrome.runtime.onMessage.addListener(
   (message: { type?: string; payload?: string[] }) => {
-    if (message?.type === "image-urls") {
+    if (message?.type !== "image-urls") {
+      return;
+    }
+
+    void (async () => {
       // content 側でも正規化しているが、受け取り側でも保険として再適用する
       const images = normalizeAndDedupeUrls(message.payload ?? []);
-      console.log("Received image URLs:", images.length);
+      const id = crypto.randomUUID();
+      const imagesKey = imagesSessionKey(id);
 
-      chrome.storage.session.set({ images }).then(() => {
-        console.log("saved to session");
+      console.log("Received image URLs:", images.length, "session id:", id);
 
-        chrome.tabs.create({
-          url: chrome.runtime.getURL("viewer/viewer.html"),
-          active: true,
-        });
+      await chrome.storage.session.set({ [imagesKey]: images });
+
+      const viewerUrl = new URL(
+        chrome.runtime.getURL("viewer/viewer.html"),
+      );
+      viewerUrl.searchParams.set("id", id);
+
+      const tab = await chrome.tabs.create({
+        url: viewerUrl.href,
+        active: true,
       });
-    }
+
+      // SW 再起動後も掃除できるよう、対応表も session に残す
+      if (tab.id != null) {
+        await chrome.storage.session.set({
+          [viewerTabSessionKey(tab.id)]: id,
+        });
+      }
+    })();
   },
 );
+
+// viewer タブを閉じたら、その一覧だけ session から削除する（F5 では発火しない）
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void (async () => {
+    const tabKey = viewerTabSessionKey(tabId);
+    const result = await chrome.storage.session.get(tabKey);
+    const id = result[tabKey];
+    if (typeof id !== "string" || !id) {
+      return;
+    }
+
+    await chrome.storage.session.remove([tabKey, imagesSessionKey(id)]);
+    console.log("Removed session images for closed viewer tab:", tabId, id);
+  })();
+});
