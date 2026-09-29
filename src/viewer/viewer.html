@@ -1,15 +1,29 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>画像一覧</title>
+    <title data-i18n="page.title">Image Gallery</title>
     <link rel="stylesheet" href="viewer.css" />
   </head>
 
   <body>
     <header>
-      <!-- フィルター前の件数 -->
-      <p id="info"></p>
+      <div class="header-top">
+        <!-- フィルター前の件数 -->
+        <p id="info"></p>
+
+        <div class="lang-select">
+          <label for="locale-select" data-i18n="lang.label">Language</label>
+          <select
+            id="locale-select"
+            data-i18n="lang.label"
+            data-i18n-attr="aria-label"
+          >
+            <option value="en" data-i18n="lang.en">English</option>
+            <option value="ja" data-i18n="lang.ja">日本語</option>
+          </select>
+        </div>
+      </div>
 
       <!-- 適用中のフィルター情報 -->
       <div id="filter-summary">
@@ -20,11 +34,13 @@
       <!-- フィルター -->
       <div class="filters">
         <div class="size-filter-group">
-          <p class="size-filter-title">最小サイズ（px）</p>
+          <p class="size-filter-title" data-i18n="filter.minSizeTitle">
+            Minimum size (px)
+          </p>
 
           <div class="size-filter-row">
-            <label class="size-filter-input">
-              横
+            <label class="size-filter-input" data-i18n="filter.width">
+              Width
               <input
                 type="number"
                 id="min-width"
@@ -34,8 +50,8 @@
                 inputmode="numeric"
               />
             </label>
-            <label class="size-filter-input">
-              縦
+            <label class="size-filter-input" data-i18n="filter.height">
+              Height
               <input
                 type="number"
                 id="min-height"
@@ -45,22 +61,32 @@
                 inputmode="numeric"
               />
             </label>
-            <button id="apply-size-filter">適用</button>
-            <button id="clear-size-filter" type="button">クリア</button>
+            <button id="apply-size-filter" data-i18n="filter.apply">
+              Apply
+            </button>
+            <button
+              id="clear-size-filter"
+              type="button"
+              data-i18n="filter.clear"
+            >
+              Clear
+            </button>
           </div>
         </div>
 
         <div class="ext-filter-group">
-          <p class="ext-filter-title">拡張子フィルター</p>
+          <p class="ext-filter-title" data-i18n="filter.extTitle">
+            File type filter
+          </p>
 
           <div class="ext-filter-row">
-            <label>
+            <label data-i18n="filter.hideSvg">
               <input type="checkbox" id="filter-svg" />
-              SVG を非表示
+              Hide SVG
             </label>
-            <label>
+            <label data-i18n="filter.hideGif">
               <input type="checkbox" id="filter-gif" />
-              GIF を非表示
+              Hide GIF
             </label>
           </div>
         </div>
@@ -77,7 +103,11 @@
       <img id="modal-img" />
 
       <!-- ✕ボタン -->
-      <button id="close-btn">
+      <button
+        id="close-btn"
+        data-i18n="modal.close"
+        data-i18n-attr="aria-label"
+      >
         <svg
           id="close-icon"
           xmlns="http://www.w3.org/2000/svg"
@@ -98,7 +128,7 @@
 
       <!-- 拡大／縮小切り替え -->
       <button id="zoom-btn">
-        <!-- 拡大アイコン -->
+        <!-- 拡大アイコン（次アクション: 原寸大） -->
         <svg
           id="zoom-in-icon"
           xmlns="http://www.w3.org/2000/svg"
@@ -116,7 +146,7 @@
           <path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1" />
         </svg>
 
-        <!-- 縮小アイコン -->
+        <!-- 縮小アイコン（次アクション: 画面に合わせる） -->
         <svg
           id="zoom-out-icon"
           xmlns="http://www.w3.org/2000/svg"

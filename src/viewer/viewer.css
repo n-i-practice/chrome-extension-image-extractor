@@ -11,11 +11,33 @@ header {
   margin-bottom: 20px;
 }
 
+.header-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.lang-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.lang-select select {
+  font-size: 0.9rem;
+  padding: 2px 6px;
+}
+
 #info {
   font-size: 1.1rem;
   font-weight: 600;
   color: #000;
-  margin-bottom: 4px;
+  margin: 0;
 }
 
 #filter-summary {

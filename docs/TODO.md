@@ -60,7 +60,7 @@
 
 ## v1（初期リリース）
 
-- 多言語対応（基盤 `src/i18n/` 完了。viewer 接続・manifest `_locales` は未着手。詳細は `docs/i18n-TODO.md`）
+- 多言語対応（基盤・viewer 接続完了。manifest `_locales` と QA は未着手。詳細は `docs/i18n-TODO.md`）
 
 ---
 

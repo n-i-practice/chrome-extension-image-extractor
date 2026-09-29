@@ -1,3 +1,12 @@
+import {
+  applyStaticI18n,
+  getLocale,
+  isLocale,
+  resolveLocale,
+  setLocale,
+  t,
+} from "../i18n";
+
 // ===============================
 // Viewer State Enum（表示状態の定義）
 // ===============================
@@ -24,6 +33,13 @@ const grid = document.getElementById("grid") as HTMLElement;
 const info = document.getElementById("info") as HTMLElement;
 const filterInfo = document.getElementById("filter-info") as HTMLElement;
 const visibleCount = document.getElementById("visible-count") as HTMLElement;
+const localeSelect = document.getElementById(
+  "locale-select",
+) as HTMLSelectElement;
+
+/** 読み込み済み画像件数（言語切替時の件数表示再描画用） */
+let totalImageCount = 0;
+let imagesLoaded = false;
 
 // フィルター用チェックボックス
 const filterSvgCheckbox = document.getElementById(
@@ -181,14 +197,48 @@ function applyFilters(): void {
   });
 
   // 表示中件数を更新
-  visibleCount.textContent = `表示中：${visible}件`;
+  visibleCount.textContent = t("status.visibleCount", { count: visible });
 }
 
 // ===============================
 // フィルター情報の更新
 // ===============================
 function updateFilterInfo(): void {
-  filterInfo.textContent = `適用中：横 ≥ ${committedMinWidth}px / 縦 ≥ ${committedMinHeight}px`;
+  filterInfo.textContent = t("status.filterActive", {
+    width: committedMinWidth,
+    height: committedMinHeight,
+  });
+}
+
+function updateInfoText(): void {
+  if (!imagesLoaded) {
+    return;
+  }
+  if (totalImageCount === 0) {
+    info.textContent = t("status.noImages");
+    return;
+  }
+  info.textContent = t("status.imageCount", { count: totalImageCount });
+}
+
+/** モーダル操作ボタンの aria-label（次に実行される操作を表す） */
+function updateModalAriaLabels(): void {
+  closeBtn.setAttribute("aria-label", t("modal.close"));
+  if (viewerState === ViewerState.ORIGINAL) {
+    zoomBtn.setAttribute("aria-label", t("modal.zoomIn"));
+  } else {
+    zoomBtn.setAttribute("aria-label", t("modal.zoomOut"));
+  }
+}
+
+/** 静的・動的文言を現在の locale で再適用する */
+function refreshI18n(): void {
+  applyStaticI18n();
+  localeSelect.value = getLocale();
+  updateInfoText();
+  updateFilterInfo();
+  applyFilters();
+  updateModalAriaLabels();
 }
 
 // ===============================
@@ -253,27 +303,38 @@ minHeightInput.addEventListener("keydown", (event: KeyboardEvent) => {
   }
 });
 
-// 初期表示時にも適用中の最小サイズを表示する
-updateFilterInfo();
+// 初期表示と画像読み込みは locale 解決後に行う
+void init();
 
-// ===============================
-// 画像一覧の読み込み
-// ===============================
-chrome.storage.session.get("images").then((result: { images?: string[] }) => {
-  const images = result.images ?? [];
-
-  if (!images || images.length === 0) {
-    info.textContent = "画像がありません";
+localeSelect.addEventListener("change", () => {
+  const value = localeSelect.value;
+  if (!isLocale(value)) {
     return;
   }
+  void setLocale(value).then(() => {
+    refreshI18n();
+  });
+});
 
-  info.textContent = `${images.length} 件の画像`;
+async function init(): Promise<void> {
+  await resolveLocale();
+  refreshI18n();
+
+  const result = await chrome.storage.session.get("images");
+  const images = result.images ?? [];
+  imagesLoaded = true;
+  totalImageCount = images.length;
+  updateInfoText();
+
+  if (images.length === 0) {
+    return;
+  }
 
   images.forEach((url: string) => {
     const record = createImageRecord(url);
     createCard(record);
   });
-});
+}
 
 // ===============================
 // 閉じる操作
@@ -387,6 +448,7 @@ function enterZoomState(): void {
     naturalWidth <= winWidth && naturalHeight <= winHeight ? "none" : "block";
 
   zoomOutIcon.style.display = "none";
+  updateModalAriaLabels();
 }
 
 // ===============================
@@ -409,4 +471,5 @@ function enterOriginalState(): void {
 
   modalImg.style.left = `${centerX}px`;
   modalImg.style.top = `${centerY}px`;
+  updateModalAriaLabels();
 }
