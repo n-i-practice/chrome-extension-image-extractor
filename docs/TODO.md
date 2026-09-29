@@ -19,7 +19,7 @@
 
 ## 抽出ロジック（content script）
 
-- CSS の `background-image` 抽出
+- ~~CSS の `background-image` 抽出~~（完了）
 - CSS の `content: url()` 抽出
 - MutationObserver による動的画像追加の検知（SPA対応）
 - `<meta property="og:image">` の抽出

@@ -1,12 +1,26 @@
+import { extractBackgroundImages } from "./extractors/background-image";
 import { getLargestFromSrcset } from "./extractors/srcset";
 
 // Chrome API の型を使うために @types/chrome が必要
 // npm install --save-dev @types/chrome
 
 function extractImages(): void {
+  // 抽出した画像 URL の一覧（background に送る）
+  const srcList: string[] = [];
+  // すでに追加済みの URL を記録し、重複追加を防ぐ
+  const seen = new Set<string>();
+
+  // URL が空、または既に追加済みならスキップする
+  const addUrl = (url: string | null | undefined): void => {
+    if (!url || seen.has(url)) {
+      return;
+    }
+    seen.add(url);
+    srcList.push(url);
+  };
+
   // ページ内のすべての <img> 要素を取得
   const imgs: HTMLImageElement[] = Array.from(document.querySelectorAll("img"));
-  const srcList: string[] = [];
 
   imgs.forEach((img) => {
     const srcset: string | null = img.getAttribute("srcset");
@@ -17,13 +31,18 @@ function extractImages(): void {
     }
 
     if (bestSrc) {
-      srcList.push(bestSrc);
+      addUrl(bestSrc);
     } else if (img.currentSrc) {
-      srcList.push(img.currentSrc);
+      addUrl(img.currentSrc);
     } else if (img.src) {
-      srcList.push(img.src);
+      addUrl(img.src);
     }
   });
+
+  // CSS background-image（要素 / ::before / ::after）
+  for (const url of extractBackgroundImages()) {
+    addUrl(url);
+  }
 
   // 抽出した画像URL一覧を background.js に送信
   chrome.runtime.sendMessage({
