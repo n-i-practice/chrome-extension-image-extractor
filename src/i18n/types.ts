@@ -25,6 +25,8 @@ export type MessageKey =
   | "lang.ja"
   | "modal.close"
   | "modal.zoomIn"
-  | "modal.zoomOut";
+  | "modal.zoomOut"
+  | "modal.prev"
+  | "modal.next";
 
 export type Messages = Record<MessageKey, string>;

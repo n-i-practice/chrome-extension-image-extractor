@@ -26,4 +26,6 @@ export const en: Messages = {
   "modal.close": "Close",
   "modal.zoomIn": "Fit to screen",
   "modal.zoomOut": "Actual size",
+  "modal.prev": "Previous image",
+  "modal.next": "Next image",
 };

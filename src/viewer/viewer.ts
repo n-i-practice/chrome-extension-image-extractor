@@ -1,3 +1,11 @@
+/**
+ * Image Extractor の viewer 本体。
+ *
+ * - session（または fallback メッセージ）から画像 URL を受け取り一覧表示する
+ * - 最小サイズ / SVG・GIF フィルターを適用する
+ * - カードクリックでモーダル拡大表示し、左右矢印で前後移動する
+ * - 文言は src/i18n の辞書経由（refreshI18n）
+ */
 import {
   applyStaticI18n,
   getLocale,
@@ -32,6 +40,8 @@ const modal = document.getElementById("modal") as HTMLElement;
 const modalImg = document.getElementById("modal-img") as HTMLImageElement;
 const overlay = document.getElementById("overlay") as HTMLElement;
 const closeBtn = document.getElementById("close-btn") as HTMLElement;
+const prevBtn = document.getElementById("prev-btn") as HTMLButtonElement;
+const nextBtn = document.getElementById("next-btn") as HTMLButtonElement;
 const zoomBtn = document.getElementById("zoom-btn") as HTMLElement;
 const zoomInIcon = document.getElementById("zoom-in-icon") as HTMLElement;
 const zoomOutIcon = document.getElementById("zoom-out-icon") as HTMLElement;
@@ -46,9 +56,18 @@ const noticesEl = document.getElementById("notices") as HTMLElement;
 
 /** 読み込み済み画像件数（言語切替時の件数表示再描画用） */
 let totalImageCount = 0;
+/** init 完了後に true。それまでは件数文言を出さない */
 let imagesLoaded = false;
+/** session / fallback 由来の通知（切り詰め・一時受け渡し） */
 let activeNotice: ImagesNotice | null = null;
+/** 抽出失敗などで一覧を開けなかった場合のエラー種別 */
 let pageError: "extract" | null = null;
+
+/**
+ * 拡大表示中の、表示中（フィルター後）一覧におけるインデックス。
+ * 前後ナビはこのインデックスを基準に移動する。閉じているときは -1。
+ */
+let currentModalIndex = -1;
 
 // フィルター用チェックボックス
 const filterSvgCheckbox = document.getElementById(
@@ -135,6 +154,8 @@ function createCard(record: ImageRecord): void {
   const div = document.createElement("div");
   div.className = "item";
   div.dataset.ext = record.ext;
+  // 前後ナビ・フィルター同期で URL 照合するため、カード側にも src を持たせる
+  div.dataset.src = record.src;
   div.dataset.width = "0";
   div.dataset.height = "0";
 
@@ -142,7 +163,7 @@ function createCard(record: ImageRecord): void {
   img.className = "thumb";
   img.src = record.src;
 
-  // naturalWidth / naturalHeight の取得
+  // naturalWidth / naturalHeight の取得（サイズフィルター用）
   img.onload = () => {
     record.naturalWidth = img.naturalWidth;
     record.naturalHeight = img.naturalHeight;
@@ -155,17 +176,121 @@ function createCard(record: ImageRecord): void {
   img.onerror = () => {
     record.isValid = false;
     div.remove(); // 読み込み失敗は除外
+    // モーダル表示中に現在画像が消えた場合はインデックスを同期する
+    if (viewerState !== ViewerState.GRID) {
+      syncModalAfterFilterChange();
+    }
   };
 
-  // 画像クリック → 拡大表示
+  // 画像クリック → 拡大表示（表示中一覧上の位置で開く）
   img.addEventListener("click", () => {
-    modalImg.src = record.src;
-    modal.classList.remove("hidden");
-    enterZoomState();
+    const items = getVisibleItems();
+    const index = items.indexOf(div);
+    if (index < 0) {
+      return;
+    }
+    openModalAtIndex(index);
   });
 
   div.appendChild(img);
   grid.appendChild(div);
+}
+
+/**
+ * フィルター適用後に画面へ出ているカード一覧。
+ * 前後ナビの対象もこの集合に限定する（非表示カードは飛ばす）。
+ */
+function getVisibleItems(): HTMLDivElement[] {
+  return Array.from(grid.querySelectorAll<HTMLDivElement>(".item")).filter(
+    (item) => item.style.display !== "none",
+  );
+}
+
+/**
+ * 指定インデックスの画像をモーダルで開く。
+ * 切り替え時はすぐ ZOOM 状態にし、原寸設定をリセットする。
+ * 自然サイズに依存するズームボタン表示だけ onload 後に更新する。
+ */
+function openModalAtIndex(index: number): void {
+  const items = getVisibleItems();
+  if (index < 0 || index >= items.length) {
+    return;
+  }
+
+  currentModalIndex = index;
+  const src = items[index].dataset.src ?? "";
+  if (!src) {
+    return;
+  }
+
+  // 読み込み待ち中も矢印が効くよう、表示と同時に ZOOM へ移す
+  resetToZoomLayout();
+
+  modalImg.onload = () => {
+    updateZoomControlsForCurrentImage();
+  };
+  modalImg.src = src;
+  modal.classList.remove("hidden");
+
+  // キャッシュ済み画像は onload が発火しないことがある
+  if (modalImg.complete && modalImg.naturalWidth > 0) {
+    modalImg.onload = null;
+    updateZoomControlsForCurrentImage();
+  }
+
+  updateNavButtons();
+}
+
+/**
+ * 先頭／末尾、または表示が1枚以下のときは該当側の矢印を隠す。
+ */
+function updateNavButtons(): void {
+  const items = getVisibleItems();
+  const atStart = currentModalIndex <= 0;
+  const atEnd = currentModalIndex < 0 || currentModalIndex >= items.length - 1;
+
+  prevBtn.classList.toggle("hidden", atStart || items.length <= 1);
+  nextBtn.classList.toggle("hidden", atEnd || items.length <= 1);
+  updateModalAriaLabels();
+}
+
+/** delta: -1 で前、+1 で次。範囲外なら何もしない。 */
+function showAdjacentImage(delta: number): void {
+  if (viewerState === ViewerState.GRID) {
+    return;
+  }
+  const items = getVisibleItems();
+  const nextIndex = currentModalIndex + delta;
+  if (nextIndex < 0 || nextIndex >= items.length) {
+    return;
+  }
+  openModalAtIndex(nextIndex);
+}
+
+/**
+ * フィルター変更後、表示中モーダルのインデックスを同期する。
+ * 現在の画像が非表示になった／消えた場合はモーダルを閉じる。
+ */
+function syncModalAfterFilterChange(): void {
+  if (viewerState === ViewerState.GRID) {
+    return;
+  }
+
+  const items = getVisibleItems();
+  if (items.length === 0) {
+    enterGridState();
+    return;
+  }
+
+  const currentSrc = modalImg.getAttribute("src") ?? "";
+  const index = items.findIndex((item) => item.dataset.src === currentSrc);
+  if (index < 0) {
+    enterGridState();
+    return;
+  }
+
+  currentModalIndex = index;
+  updateNavButtons();
 }
 
 // ===============================
@@ -207,6 +332,8 @@ function applyFilters(): void {
 
   // 表示中件数を更新
   visibleCount.textContent = t("status.visibleCount", { count: visible });
+  // モーダル表示中に可視集合が変わったら前後ナビの位置も合わせる
+  syncModalAfterFilterChange();
 }
 
 // ===============================
@@ -234,9 +361,14 @@ function updateInfoText(): void {
   info.textContent = t("status.imageCount", { count: totalImageCount });
 }
 
-/** モーダル操作ボタンの aria-label（次に実行される操作を表す） */
+/**
+ * モーダル操作ボタンの aria-label を現在の言語で更新する。
+ * アイコンのみのボタン向け（閉じる / 前後 / ズーム）。
+ */
 function updateModalAriaLabels(): void {
   closeBtn.setAttribute("aria-label", t("modal.close"));
+  prevBtn.setAttribute("aria-label", t("modal.prev"));
+  nextBtn.setAttribute("aria-label", t("modal.next"));
   if (viewerState === ViewerState.ORIGINAL) {
     zoomBtn.setAttribute("aria-label", t("modal.zoomIn"));
   } else {
@@ -244,6 +376,7 @@ function updateModalAriaLabels(): void {
   }
 }
 
+/** session 保存失敗・件数切り詰めなどの通知バナーを描画する */
 function renderNotices(): void {
   noticesEl.replaceChildren();
   const hasNotice =
@@ -296,6 +429,10 @@ function isImagesNotice(value: unknown): value is ImagesNotice {
   );
 }
 
+/**
+ * session 保存失敗時、background から送られる fallback-images を待つ。
+ * viewer-opened より先に listener を張ること（取りこぼし防止）。
+ */
 function waitForFallbackImages(
   sessionId: string,
   timeoutMs: number,
@@ -477,6 +614,18 @@ overlay.addEventListener("click", enterGridState);
 closeBtn.addEventListener("click", enterGridState);
 
 // ===============================
+// 前後ナビ
+// ===============================
+prevBtn.addEventListener("click", (event: MouseEvent) => {
+  event.stopPropagation(); // overlay への伝播で閉じないようにする
+  showAdjacentImage(-1);
+});
+nextBtn.addEventListener("click", (event: MouseEvent) => {
+  event.stopPropagation();
+  showAdjacentImage(1);
+});
+
+// ===============================
 // 拡大 / 原寸大切り替え
 // ===============================
 zoomBtn.addEventListener("click", () => {
@@ -560,18 +709,37 @@ document.addEventListener("mouseup", () => {
 // ===============================
 function enterGridState(): void {
   viewerState = ViewerState.GRID;
+  currentModalIndex = -1;
+  modalImg.onload = null; // 閉じた後に遅延 onload が走らないようにする
   modal.classList.add("hidden");
+  updateNavButtons();
 }
 
 // ===============================
 // 状態遷移：ZOOM
 // ===============================
-function enterZoomState(): void {
+/**
+ * モーダルを ZOOM レイアウトへ戻す（状態・原寸クラス・位置）。
+ * 画像の自然サイズがまだ分からなくても呼んでよい。
+ */
+function resetToZoomLayout(): void {
   viewerState = ViewerState.ZOOM;
-
-  modalImg.classList.remove("original");
+  isDragging = false;
+  modalImg.classList.remove("original", "dragging");
   modalImg.style.left = "0px";
   modalImg.style.top = "0px";
+  zoomOutIcon.style.display = "none";
+  updateModalAriaLabels();
+}
+
+/**
+ * 読み込み済み画像の自然サイズに応じてズームボタン表示を更新する。
+ * 画面に収まる画像では「原寸大へ」ボタンを出さない。
+ */
+function updateZoomControlsForCurrentImage(): void {
+  if (viewerState !== ViewerState.ZOOM) {
+    return;
+  }
 
   const naturalWidth = modalImg.naturalWidth;
   const naturalHeight = modalImg.naturalHeight;
@@ -583,6 +751,11 @@ function enterZoomState(): void {
 
   zoomOutIcon.style.display = "none";
   updateModalAriaLabels();
+}
+
+function enterZoomState(): void {
+  resetToZoomLayout();
+  updateZoomControlsForCurrentImage();
 }
 
 // ===============================

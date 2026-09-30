@@ -26,4 +26,6 @@ export const ja: Messages = {
   "modal.close": "閉じる",
   "modal.zoomIn": "画面に合わせる",
   "modal.zoomOut": "原寸大",
+  "modal.prev": "前の画像",
+  "modal.next": "次の画像",
 };

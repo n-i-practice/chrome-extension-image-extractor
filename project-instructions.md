@@ -11,3 +11,4 @@
 - このプロジェクトでは `default_popup` を定義しない。viewer はアクションボタンから開く
 - 変更を完了と判断する前に、manifest、background、content、viewer のパス整合性を確認する
 - ユーザー向け UI 文言を追加・変更するときは、同じ変更で `src/i18n/`（en/ja）も更新する（詳細は `.cursor/rules/i18n.mdc`）
+- 実装・変更時は意図が追える程度のコメントを残す（詳細は `.cursor/rules/comments.mdc`）
