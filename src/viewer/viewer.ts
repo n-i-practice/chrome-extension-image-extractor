@@ -626,6 +626,39 @@ nextBtn.addEventListener("click", (event: MouseEvent) => {
   showAdjacentImage(1);
 });
 
+// 拡大・原寸表示中のキーボード操作
+// - Escape: モーダルを閉じる
+// - 左右キー: 前後移動（入力欄フォーカス中は除外）
+document.addEventListener("keydown", (event: KeyboardEvent) => {
+  if (viewerState === ViewerState.GRID) {
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    enterGridState();
+    return;
+  }
+
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+    return;
+  }
+
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT" ||
+      target.isContentEditable)
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+  showAdjacentImage(event.key === "ArrowLeft" ? -1 : 1);
+});
+
 // ===============================
 // 拡大 / 原寸大切り替え
 // ===============================
