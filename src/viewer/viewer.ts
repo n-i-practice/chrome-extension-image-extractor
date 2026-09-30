@@ -54,6 +54,23 @@ const localeSelect = document.getElementById(
 ) as HTMLSelectElement;
 const noticesEl = document.getElementById("notices") as HTMLElement;
 
+/**
+ * モーダル表示中は background（header / main など）を inert にして
+ * Tab で裏の入力へフォーカスが移らないようにする。
+ */
+function setBackgroundInert(enabled: boolean): void {
+  for (const el of Array.from(document.body.children)) {
+    if (el === modal) {
+      continue;
+    }
+    if (enabled) {
+      el.setAttribute("inert", "");
+    } else {
+      el.removeAttribute("inert");
+    }
+  }
+}
+
 /** 読み込み済み画像件数（言語切替時の件数表示再描画用） */
 let totalImageCount = 0;
 /** init 完了後に true。それまでは件数文言を出さない */
@@ -218,6 +235,9 @@ function openModalAtIndex(index: number): void {
     return;
   }
 
+  // resetToZoomLayout 前に判定（初回オープン時だけ閉じるボタンへフォーカス）
+  const openingFromGrid = viewerState === ViewerState.GRID;
+
   currentModalIndex = index;
   const src = items[index].dataset.src ?? "";
   if (!src) {
@@ -232,6 +252,7 @@ function openModalAtIndex(index: number): void {
   };
   modalImg.src = src;
   modal.classList.remove("hidden");
+  setBackgroundInert(true);
 
   // キャッシュ済み画像は onload が発火しないことがある
   if (modalImg.complete && modalImg.naturalWidth > 0) {
@@ -240,6 +261,11 @@ function openModalAtIndex(index: number): void {
   }
 
   updateNavButtons();
+
+  // Tab が裏に逃げないよう、初回表示時はモーダル内へフォーカスを移す
+  if (openingFromGrid) {
+    closeBtn.focus();
+  }
 }
 
 /**
@@ -746,6 +772,7 @@ function enterGridState(): void {
   currentModalIndex = -1;
   modalImg.onload = null; // 閉じた後に遅延 onload が走らないようにする
   modal.classList.add("hidden");
+  setBackgroundInert(false);
   updateNavButtons();
 }
 
@@ -755,6 +782,7 @@ function enterGridState(): void {
 /**
  * モーダルを ZOOM レイアウトへ戻す（状態・原寸クラス・位置）。
  * 画像の自然サイズがまだ分からなくても呼んでよい。
+ * ズームボタンはサイズ確定まで隠す（空のボタンにフォーカスが当たらないようにする）。
  */
 function resetToZoomLayout(): void {
   viewerState = ViewerState.ZOOM;
@@ -762,13 +790,15 @@ function resetToZoomLayout(): void {
   modalImg.classList.remove("original", "dragging");
   modalImg.style.left = "0px";
   modalImg.style.top = "0px";
+  zoomBtn.classList.add("hidden");
+  zoomInIcon.style.display = "none";
   zoomOutIcon.style.display = "none";
   updateModalAriaLabels();
 }
 
 /**
  * 読み込み済み画像の自然サイズに応じてズームボタン表示を更新する。
- * 画面に収まる画像では「原寸大へ」ボタンを出さない。
+ * 画面に収まる画像ではボタン自体を非表示にする。
  */
 function updateZoomControlsForCurrentImage(): void {
   if (viewerState !== ViewerState.ZOOM) {
@@ -779,11 +809,19 @@ function updateZoomControlsForCurrentImage(): void {
   const naturalHeight = modalImg.naturalHeight;
   const winWidth = window.innerWidth;
   const winHeight = window.innerHeight;
+  const fitsInViewport =
+    naturalWidth <= winWidth && naturalHeight <= winHeight;
 
-  zoomInIcon.style.display =
-    naturalWidth <= winWidth && naturalHeight <= winHeight ? "none" : "block";
+  if (fitsInViewport) {
+    zoomBtn.classList.add("hidden");
+    zoomInIcon.style.display = "none";
+    zoomOutIcon.style.display = "none";
+  } else {
+    zoomBtn.classList.remove("hidden");
+    zoomInIcon.style.display = "block";
+    zoomOutIcon.style.display = "none";
+  }
 
-  zoomOutIcon.style.display = "none";
   updateModalAriaLabels();
 }
 
@@ -800,6 +838,7 @@ function enterOriginalState(): void {
 
   modalImg.classList.add("original");
 
+  zoomBtn.classList.remove("hidden");
   zoomInIcon.style.display = "none";
   zoomOutIcon.style.display = "block";
 
