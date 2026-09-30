@@ -1,4 +1,4 @@
-# TODO — 未実装項目一覧
+# TODO — 項目一覧
 
 ## 完了済み（viewer）
 
@@ -20,16 +20,39 @@
 
 ---
 
+## 完了済み（content script）
+
+- CSS の `background-image` 抽出
+- 抽出URLの正規化と重複除外（`src/shared/normalize-url.ts`）
+
+---
+
+## 完了済み（background）
+
+- 画像抽出結果のURL正規化と重複除外（background でも再適用）
+- viewer ごとの session キー分割とタブ閉じ時の削除（`images:<id>` + 参照カウント + `tabs.onRemoved`。複製タブ／create 競合対策込み）
+- `chrome.storage.session` の保存件数上限への対応（最大 1500 件）
+- session 保存失敗時の viewer へのフォールバック（メッセージ受け渡し + 通知表示）
+- 画像抽出処理・viewer 起動処理のエラー表示（注入失敗時に viewer で表示）
+
+※ `open-image` メッセージによる新しいタブでの画像表示は、現行viewerではモーダル表示を採用しているためTODOから除外。
+
+---
+
+## 完了済み（v1）
+
+- 多言語対応（詳細は `docs/i18n-TODO.md`）
+
+---
+
 ## 抽出ロジック（content script）
 
-- ~~CSS の `background-image` 抽出~~（完了）
 - CSS の `content: url()` 抽出
 - MutationObserver による動的画像追加の検知（[継続収集機能の候補](#継続収集機能の候補)を参照。SPA の対応範囲は未確定）
 - `<meta property="og:image">` の抽出
 - `<video poster>` の抽出
 - `<link rel="preload" as="image">` の抽出
 - debounce（300ms）による追加画像のバッチ処理（継続収集機能と合わせて検討）
-- ~~抽出URLの正規化と重複除外~~（完了。`src/shared/normalize-url.ts`）
 - `blob:` / `data:` URL の抽出対応
 
 ### srcset の追加対応
@@ -51,13 +74,7 @@
 
 ## background 側の未実装・改善
 
-- ~~画像抽出結果のURL正規化と重複除外~~（完了。background でも再適用）
-- ~~viewer ごとの session キー分割とタブ閉じ時の削除~~（完了。`images:<id>` + 参照カウント + `tabs.onRemoved`。複製タブ／create 競合対策込み）
-- ~~`chrome.storage.session` の保存件数上限への対応~~（完了。最大 1500 件）
-- ~~session 保存失敗時の viewer へのフォールバック~~（完了。メッセージ受け渡し + 通知表示）
-- ~~画像抽出処理・viewer 起動処理のエラー表示~~（完了。注入失敗時に viewer で表示）
-
-※ `open-image` メッセージによる新しいタブでの画像表示は、現行viewerではモーダル表示を採用しているためTODOから除外。
+（現時点で未着手の項目なし）
 
 ---
 
@@ -98,7 +115,7 @@
 
 ## v1（初期リリース）
 
-- ~~多言語対応~~（v1 完了。詳細は `docs/i18n-TODO.md`）
+（現時点で未着手の項目なし）
 
 ---
 
