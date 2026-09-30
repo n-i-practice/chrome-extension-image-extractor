@@ -227,6 +227,7 @@ function getVisibleItems(): HTMLDivElement[] {
 /**
  * 指定インデックスの画像をモーダルで開く。
  * 切り替え時はすぐ ZOOM 状態にし、原寸設定をリセットする。
+ * 前画像の残像を避けるため、読み込み完了まで画像は非表示にする。
  * 自然サイズに依存するズームボタン表示だけ onload 後に更新する。
  */
 function openModalAtIndex(index: number): void {
@@ -247,8 +248,15 @@ function openModalAtIndex(index: number): void {
   // 読み込み待ち中も矢印が効くよう、表示と同時に ZOOM へ移す
   resetToZoomLayout();
 
+  // 前画像の残像を出さないよう、読み込み完了まで非表示にする
+  modalImg.style.visibility = "hidden";
   modalImg.onload = () => {
+    modalImg.style.visibility = "visible";
     updateZoomControlsForCurrentImage();
+  };
+  modalImg.onerror = () => {
+    // 失敗時も空のままにせず、破画像アイコン等を見せる
+    modalImg.style.visibility = "visible";
   };
   modalImg.src = src;
   modal.classList.remove("hidden");
@@ -257,6 +265,8 @@ function openModalAtIndex(index: number): void {
   // キャッシュ済み画像は onload が発火しないことがある
   if (modalImg.complete && modalImg.naturalWidth > 0) {
     modalImg.onload = null;
+    modalImg.onerror = null;
+    modalImg.style.visibility = "visible";
     updateZoomControlsForCurrentImage();
   }
 
@@ -776,6 +786,10 @@ function enterGridState(): void {
   viewerState = ViewerState.GRID;
   currentModalIndex = -1;
   modalImg.onload = null; // 閉じた後に遅延 onload が走らないようにする
+  modalImg.onerror = null;
+  // 次回オープン時に前画像が一瞬映らないよう src を破棄する
+  modalImg.removeAttribute("src");
+  modalImg.style.visibility = "hidden";
   modal.classList.add("hidden");
   setBackgroundInert(false);
   updateNavButtons();
