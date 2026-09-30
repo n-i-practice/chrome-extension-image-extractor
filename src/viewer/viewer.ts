@@ -830,6 +830,36 @@ function enterZoomState(): void {
   updateZoomControlsForCurrentImage();
 }
 
+/**
+ * 原寸表示の画像を画面中央へ置き直す。
+ * ドラッグ中フラグも解除する（リサイズ時の位置ずれ防止）。
+ */
+function recenterOriginalImage(): void {
+  isDragging = false;
+  modalImg.classList.remove("dragging");
+
+  const rect = modalImg.getBoundingClientRect();
+  const imgWidth = rect.width;
+  const imgHeight = rect.height;
+
+  const centerX = (window.innerWidth - imgWidth) / 2;
+  const centerY = (window.innerHeight - imgHeight) / 2;
+
+  modalImg.style.left = `${centerX}px`;
+  modalImg.style.top = `${centerY}px`;
+}
+
+// ウィンドウサイズ変更時:
+// - ZOOM: 原寸大ボタンの表示を再判定
+// - ORIGINAL: ドラッグをリセットして中央へ再配置
+window.addEventListener("resize", () => {
+  if (viewerState === ViewerState.ZOOM) {
+    updateZoomControlsForCurrentImage();
+  } else if (viewerState === ViewerState.ORIGINAL) {
+    recenterOriginalImage();
+  }
+});
+
 // ===============================
 // 状態遷移：ORIGINAL
 // ===============================
@@ -842,14 +872,6 @@ function enterOriginalState(): void {
   zoomInIcon.style.display = "none";
   zoomOutIcon.style.display = "block";
 
-  const rect = modalImg.getBoundingClientRect();
-  const imgWidth = rect.width;
-  const imgHeight = rect.height;
-
-  const centerX = (window.innerWidth - imgWidth) / 2;
-  const centerY = (window.innerHeight - imgHeight) / 2;
-
-  modalImg.style.left = `${centerX}px`;
-  modalImg.style.top = `${centerY}px`;
+  recenterOriginalImage();
   updateModalAriaLabels();
 }
