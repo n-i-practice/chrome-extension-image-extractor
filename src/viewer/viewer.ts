@@ -654,7 +654,7 @@ nextBtn.addEventListener("click", (event: MouseEvent) => {
 
 // 拡大・原寸表示中のキーボード操作
 // - Escape: モーダルを閉じる
-// - 左右キー: 前後移動（入力欄フォーカス中は除外）
+// - 左右キー: 前後移動（入力欄フォーカス中・修飾キー付きは除外。Alt+← 等のブラウザ操作を妨げない）
 document.addEventListener("keydown", (event: KeyboardEvent) => {
   if (viewerState === ViewerState.GRID) {
     return;
@@ -667,6 +667,11 @@ document.addEventListener("keydown", (event: KeyboardEvent) => {
   }
 
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+    return;
+  }
+
+  // Alt/Ctrl/Meta 付きはブラウザや OS のショートカットに譲る
+  if (event.altKey || event.ctrlKey || event.metaKey) {
     return;
   }
 
