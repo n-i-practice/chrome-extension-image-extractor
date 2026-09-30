@@ -88,9 +88,10 @@ const clearSizeFilterButton = document.getElementById(
 ) as HTMLButtonElement;
 
 // フィルター用変数
-// 適用中の最小サイズの値を保持する。入力中の値と適用後の値を分けて扱う。
-let committedMinWidth: number = 0;
-let committedMinHeight: number = 0;
+// 適用中の最小サイズ。仕様どおり初期値は 400×400 で、起動時点からフィルター適用済みとする。
+const DEFAULT_MIN_SIZE = 400;
+let committedMinWidth: number = DEFAULT_MIN_SIZE;
+let committedMinHeight: number = DEFAULT_MIN_SIZE;
 
 function commitMinSizeFilter(): void {
   const widthValue = Number(minWidthInput.value || "0");
