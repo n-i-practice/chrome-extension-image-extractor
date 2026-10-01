@@ -70,7 +70,7 @@ npm run build
 
 ## テスト
 
-`npm test` でセッション管理の回帰テストを実行します。
+`npm test` でセッション管理・Viewer 操作の回帰テストを実行します。
 対象範囲と Chrome での手動確認手順は [docs/TESTING.md](docs/TESTING.md) を参照してください。
 
 ## ライセンス

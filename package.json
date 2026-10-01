@@ -9,8 +9,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "test": "npm run test:session",
+    "test": "node --test test/*.test.cjs",
     "test:session": "node --test test/session.test.cjs",
+    "test:viewer": "node --test test/viewer.test.cjs",
     "build:esbuild": "node build/esbuild.config.js",
     "build:vite": "vite build",
     "build": "npm run build:esbuild && npm run build:vite"
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@types/chrome": "^0.2.7",
     "esbuild": "^0.28.2",
+    "jsdom": "^30.1.1",
     "vite": "^8.2.2"
   }
 }
