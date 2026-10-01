@@ -68,6 +68,11 @@ npm run build
 - `manifest.json`、`vite.config.js`、`package.json`、`package-lock.json` は Git 管理します
 - content_scripts のパスは Vite のルート基準で記述します
 
+## テスト
+
+`npm test` でセッション管理の回帰テストを実行します。
+対象範囲と Chrome での手動確認手順は [docs/TESTING.md](docs/TESTING.md) を参照してください。
+
 ## ライセンス
 
 MIT
