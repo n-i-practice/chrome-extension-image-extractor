@@ -25,7 +25,7 @@ const IMAGES = [
   { src: "https://example.test/small.png", width: 600, height: 500 },
 ];
 
-async function createViewerHarness(t, { images = IMAGES, cached = false } = {}) {
+async function createViewerHarness(t, { images = IMAGES, cached = false, autoLoad = true } = {}) {
   const errors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", error => errors.push(error));
@@ -43,9 +43,13 @@ async function createViewerHarness(t, { images = IMAGES, cached = false } = {}) 
   });
   window.innerWidth = 1000;
   window.innerHeight = 800;
+  const localStorage = { locale: "en" };
   window.chrome = {
     storage: {
-      local: { async get() { return { locale: "en" }; } },
+      local: {
+        async get() { return { ...localStorage }; },
+        async set(values) { Object.assign(localStorage, values); },
+      },
       session: {
         async get() {
           return { "images:test-session": images.map(image => image.src) };
@@ -77,7 +81,8 @@ async function createViewerHarness(t, { images = IMAGES, cached = false } = {}) 
   await nextTurn();
   const cards = [...document.querySelectorAll("#grid .item")];
   if (cards.length !== images.length) throw new Error("Viewer の初期化が完了しなかった");
-  for (const card of cards) loadImage(card.querySelector("img"));
+  // 読み込み順序によるフィルター・モーダル同期を検証する場合は手動で load する。
+  if (autoLoad) for (const card of cards) loadImage(card.querySelector("img"));
 
   const el = id => document.getElementById(id);
   const img = el("modal-img");
@@ -103,6 +108,7 @@ async function createViewerHarness(t, { images = IMAGES, cached = false } = {}) 
   return {
     window, document, cards, img, el, mouse,
     loadModal: () => loadImage(img),
+    loadThumbnail: index => loadImage(cards[index].querySelector("img")),
     open(index = 0, { load = true } = {}) {
       cards[index].querySelector(".thumb").click();
       if (load) loadImage(img);
