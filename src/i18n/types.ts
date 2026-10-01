@@ -20,6 +20,7 @@ export type MessageKey =
   | "status.truncated"
   | "status.fallbackDelivery"
   | "status.extractFailed"
+  | "status.loadFailed"
   | "lang.label"
   | "lang.en"
   | "lang.ja"

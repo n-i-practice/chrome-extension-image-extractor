@@ -25,12 +25,16 @@ const IMAGES = [
   { src: "https://example.test/small.png", width: 600, height: 500 },
 ];
 
-async function createViewerHarness(t, { images = IMAGES, cached = false, autoLoad = true } = {}) {
+async function createViewerHarness(t, {
+  images = IMAGES, cached = false, autoLoad = true,
+  search = "?id=test-session", notice, sessionReadFails = false,
+  onOpened, pendingFallback = false,
+} = {}) {
   const errors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", error => errors.push(error));
   const dom = new JSDOM(html, {
-    url: "https://extension.test/viewer/viewer.html?id=test-session",
+    url: "https://extension.test/viewer/viewer.html" + search,
     runScripts: "outside-only",
     virtualConsole,
   });
@@ -44,6 +48,15 @@ async function createViewerHarness(t, { images = IMAGES, cached = false, autoLoa
   window.innerWidth = 1000;
   window.innerHeight = 800;
   const localStorage = { locale: "en" };
+  const listeners = new Set();
+  const timers = new Map();
+  let timerId = 0;
+  const sent = [];
+  let sessionReads = 0;
+  const message = payload => { for (const listener of [...listeners]) listener(payload); };
+  // fallback の8秒待ちは仮想タイマーで進め、実時間に依存させない。
+  window.setTimeout = (callback, ms) => { timers.set(++timerId, { callback, ms }); return timerId; };
+  window.clearTimeout = id => timers.delete(id);
   window.chrome = {
     storage: {
       local: {
@@ -52,11 +65,25 @@ async function createViewerHarness(t, { images = IMAGES, cached = false, autoLoa
       },
       session: {
         async get() {
-          return { "images:test-session": images.map(image => image.src) };
+          sessionReads++;
+          if (sessionReadFails) throw new Error("Simulated session read failure");
+          return {
+            "images:test-session": images.map(image => image.src),
+            "imagesNotice:test-session": notice,
+          };
         },
       },
     },
-    runtime: { async sendMessage() {} },
+    runtime: {
+      onMessage: {
+        addListener: listener => listeners.add(listener),
+        removeListener: listener => listeners.delete(listener),
+      },
+      async sendMessage(payload) {
+        sent.push(payload);
+        if (onOpened) onOpened(message);
+      },
+    },
   };
 
   // src を変えた直後は未読込に戻し、明示的な load までは自然サイズを返さない。
@@ -79,8 +106,10 @@ async function createViewerHarness(t, { images = IMAGES, cached = false, autoLoa
   window.eval(code);
   // init の非同期 storage 読み出しと、その後のカード生成まで待つ。
   await nextTurn();
-  const cards = [...document.querySelectorAll("#grid .item")];
-  if (cards.length !== images.length) throw new Error("Viewer の初期化が完了しなかった");
+  const getCards = () => [...document.querySelectorAll("#grid .item")];
+  const cards = getCards();
+  const expectedCount = pendingFallback || search.includes("error=") || sessionReadFails ? 0 : images.length;
+  if (cards.length !== expectedCount) throw new Error("Viewer の初期化が完了しなかった");
   // 読み込み順序によるフィルター・モーダル同期を検証する場合は手動で load する。
   if (autoLoad) for (const card of cards) loadImage(card.querySelector("img"));
 
@@ -106,11 +135,32 @@ async function createViewerHarness(t, { images = IMAGES, cached = false, autoLoa
     return event;
   }
   return {
-    window, document, cards, img, el, mouse,
+    window, document, get cards() { return getCards(); }, img, el, mouse,
+    message, sent, sessionReads: () => sessionReads,
+    listenerCount: () => listeners.size,
+    timerCount: () => timers.size,
+    async expireFallback() {
+      for (const [id, timer] of timers) {
+        if (timer.ms !== 8000) throw new Error("Unexpected timer duration");
+        timers.delete(id);
+        timer.callback();
+      }
+      await nextTurn();
+    },
+    async settle() { await nextTurn(); },
+    failThumbnail(index) {
+      const thumbnail = getCards()[index].querySelector("img");
+      loaded.delete(thumbnail);
+      thumbnail.dispatchEvent(new window.Event("error"));
+    },
+    failModal() {
+      loaded.delete(img);
+      img.dispatchEvent(new window.Event("error"));
+    },
     loadModal: () => loadImage(img),
-    loadThumbnail: index => loadImage(cards[index].querySelector("img")),
+    loadThumbnail: index => loadImage(getCards()[index].querySelector("img")),
     open(index = 0, { load = true } = {}) {
-      cards[index].querySelector(".thumb").click();
+      getCards()[index].querySelector(".thumb").click();
       if (load) loadImage(img);
     },
     key(key, options = {}, target = document.activeElement) {

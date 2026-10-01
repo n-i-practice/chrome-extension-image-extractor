@@ -30,10 +30,21 @@ function createEvent() {
   };
 }
 
-function createBackgroundHarness({ closeDuringCreate = false } = {}) {
+function createBackgroundHarness({ closeDuringCreate = false, activeTab = true, hasExtractor = false } = {}) {
   const storage = {};
   const tabs = new Map();
   const createdTabs = [];
+  const messages = [];
+  const errors = [];
+  const failures = new Map();
+  function failNext(api) { failures.set(api, (failures.get(api) ?? 0) + 1); }
+  function maybeFail(api) {
+    const remaining = failures.get(api) ?? 0;
+    if (remaining) {
+      failures.set(api, remaining - 1);
+      throw new Error("Simulated failure: " + api);
+    }
+  }
   let nextTabId = 1;
   let pendingCalls = 0;
   let completedCalls = 0;
@@ -73,6 +84,7 @@ function createBackgroundHarness({ closeDuringCreate = false } = {}) {
       storage: {
         session: {
           get: (keys) => apiCall(() => {
+            if (typeof keys === "string" && keys.startsWith("viewerRefs:")) maybeFail("viewerRefs.get");
             if (keys == null) return structuredClone(storage);
             const result = {};
             for (const key of typeof keys === "string" ? [keys] : keys) {
@@ -82,7 +94,11 @@ function createBackgroundHarness({ closeDuringCreate = false } = {}) {
           }),
           set: (values) => {
             const copy = structuredClone(values);
-            return apiCall(() => { Object.assign(storage, copy); });
+            return apiCall(() => {
+              if (Object.keys(copy).some(key => key.startsWith("images:"))) maybeFail("images.save");
+              if (Object.keys(copy).some(key => key.startsWith("viewerRefs:"))) maybeFail("viewerRefs.save");
+              Object.assign(storage, copy);
+            });
           },
           remove: (keys) => apiCall(() => {
             for (const key of typeof keys === "string" ? [keys] : keys) {
@@ -91,9 +107,21 @@ function createBackgroundHarness({ closeDuringCreate = false } = {}) {
           }),
         },
       },
+      scripting: {
+        executeScript: options => apiCall(() => {
+          const isCheck = options.func?.toString().includes("typeof");
+          maybeFail(isCheck ? "script.check" : "script.extract");
+          return isCheck ? [{ result: hasExtractor }] : [];
+        }),
+      },
       tabs: {
+        query: () => apiCall(() => {
+          maybeFail("tabs.query");
+          return activeTab ? [{ id: 10000 }] : [];
+        }),
         onRemoved: events.removed,
         create: (options) => apiCall(async () => {
+          maybeFail("tabs.create");
           const tab = { id: nextTabId++, ...structuredClone(options) };
           tabs.set(tab.id, tab);
           createdTabs.push(tab);
@@ -108,9 +136,10 @@ function createBackgroundHarness({ closeDuringCreate = false } = {}) {
           if (!tabs.has(id)) throw new Error("No tab with id: " + id);
           return structuredClone(tabs.get(id));
         }),
-        sendMessage: () => {
-          throw new Error("Unexpected fallback delivery in session-management tests");
-        },
+        sendMessage: (tabId, message) => apiCall(() => {
+          maybeFail("tabs.sendMessage");
+          messages.push(structuredClone({ tabId, message }));
+        }),
       },
     };
 
@@ -119,7 +148,7 @@ function createBackgroundHarness({ closeDuringCreate = false } = {}) {
       chrome,
       URL,
       crypto: { randomUUID },
-      console: { log() {}, warn() {}, error() {} },
+      console: { log() {}, warn() {}, error(...args) { errors.push(args.map(String).join(" ")); } },
     });
   }
 
@@ -141,6 +170,10 @@ function createBackgroundHarness({ closeDuringCreate = false } = {}) {
   startWorker();
   return {
     settle,
+    failNext,
+    clickAction: () => events.clicked.emit(),
+    sent: () => structuredClone(messages),
+    errors: () => [...errors],
     closeTabs,
     snapshot: () => structuredClone(storage),
     created: () => structuredClone(createdTabs),

@@ -20,6 +20,8 @@ export const ja: Messages = {
   "status.fallbackDelivery":
     "session への保存に失敗したため、一時的に一覧を受け渡しました。再読み込みで消える場合があります。",
   "status.extractFailed": "このページから画像を抽出できませんでした。",
+  "status.loadFailed":
+    "画像一覧を読み込めませんでした。元のページからもう一度画像を抽出してください。",
   "lang.label": "言語",
   "lang.en": "English",
   "lang.ja": "日本語",

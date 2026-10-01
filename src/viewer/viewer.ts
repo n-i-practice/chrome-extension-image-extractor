@@ -78,7 +78,7 @@ let imagesLoaded = false;
 /** session / fallback 由来の通知（切り詰め・一時受け渡し） */
 let activeNotice: ImagesNotice | null = null;
 /** 抽出失敗などで一覧を開けなかった場合のエラー種別 */
-let pageError: "extract" | null = null;
+let pageError: "extract" | "load" | null = null;
 
 /**
  * 拡大表示中の、表示中（フィルター後）一覧におけるインデックス。
@@ -221,10 +221,8 @@ function createCard(record: ImageRecord): void {
   img.onerror = () => {
     record.isValid = false;
     div.remove(); // 読み込み失敗は除外
-    // モーダル表示中に現在画像が消えた場合はインデックスを同期する
-    if (viewerState !== ViewerState.GRID) {
-      syncModalAfterFilterChange();
-    }
+    // 除去後の件数とモーダル位置をまとめて再評価する。最後の失敗でも0件にする。
+    applyFilters();
   };
 
   // サムネ・メタ行どちらをクリックしても拡大表示を開く
@@ -419,6 +417,10 @@ function updateInfoText(): void {
     info.textContent = t("status.extractFailed");
     return;
   }
+  if (pageError === "load") {
+    info.textContent = t("status.loadFailed");
+    return;
+  }
   if (totalImageCount === 0) {
     info.textContent = t("status.noImages");
     return;
@@ -501,11 +503,12 @@ function isImagesNotice(value: unknown): value is ImagesNotice {
 function waitForFallbackImages(
   sessionId: string,
   timeoutMs: number,
-): Promise<{ images: string[]; notice: ImagesNotice | null }> {
+): Promise<{ images: string[]; notice: ImagesNotice | null } | null> {
   return new Promise((resolve) => {
     const timer = window.setTimeout(() => {
       chrome.runtime.onMessage.removeListener(handler);
-      resolve({ images: [], notice: null });
+      // 空の抽出結果と、受け渡しが完了しなかった場合を区別する。
+      resolve(null);
     }, timeoutMs);
 
     function handler(
@@ -644,17 +647,26 @@ async function init(): Promise<void> {
   let images: string[] = [];
   activeNotice = null;
 
-  if (fallbackWait) {
-    const fallback = await fallbackWait;
-    images = fallback.images;
-    activeNotice = fallback.notice;
-  } else if (sessionId) {
-    const imagesKey = imagesSessionKey(sessionId);
-    const noticeKey = imagesNoticeSessionKey(sessionId);
-    const result = await chrome.storage.session.get([imagesKey, noticeKey]);
-    images = (result[imagesKey] as string[] | undefined) ?? [];
-    const notice = result[noticeKey];
-    activeNotice = isImagesNotice(notice) ? notice : null;
+  try {
+    if (fallbackWait) {
+      const fallback = await fallbackWait;
+      if (!fallback) {
+        throw new Error("Timed out waiting for fallback images");
+      }
+      images = fallback.images;
+      activeNotice = fallback.notice;
+    } else if (sessionId) {
+      const imagesKey = imagesSessionKey(sessionId);
+      const noticeKey = imagesNoticeSessionKey(sessionId);
+      const result = await chrome.storage.session.get([imagesKey, noticeKey]);
+      images = (result[imagesKey] as string[] | undefined) ?? [];
+      const notice = result[noticeKey];
+      activeNotice = isImagesNotice(notice) ? notice : null;
+    }
+  } catch (error) {
+    // 読み出し失敗を「画像なし」と混同せず、言語切替後も再抽出の案内を維持する。
+    console.error("Failed to load viewer images:", error);
+    pageError = "load";
   }
 
   imagesLoaded = true;

@@ -20,6 +20,8 @@ export const en: Messages = {
   "status.fallbackDelivery":
     "Could not save to session. The list was sent temporarily; reload may clear it.",
   "status.extractFailed": "Could not extract images from this page.",
+  "status.loadFailed":
+    "Could not load the image list. Please extract images again from the original page.",
   "lang.label": "Language",
   "lang.en": "English",
   "lang.ja": "日本語",

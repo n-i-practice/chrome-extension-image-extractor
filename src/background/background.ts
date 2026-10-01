@@ -130,10 +130,32 @@ async function openViewerTab(
   if (delivery === "fallback") {
     viewerUrl.searchParams.set("delivery", "fallback");
   }
-  return chrome.tabs.create({
-    url: viewerUrl.href,
-    active: true,
-  });
+  try {
+    return await chrome.tabs.create({
+      url: viewerUrl.href,
+      active: true,
+    });
+  } catch (error) {
+    // タブ未作成では onRemoved が来ないため、このセッションの保存分を回収する。
+    pendingFallbackImages.delete(id);
+    try {
+      await enqueueSessionOp(() =>
+        chrome.storage.session.remove([
+          imagesSessionKey(id),
+          imagesNoticeSessionKey(id),
+        ]),
+      );
+    } catch (cleanupError) {
+      console.error("Failed to clean up unopened viewer:", cleanupError);
+    }
+    // エラー画面を追加するのは一覧タブを作れなかった場合だけに限定する。
+    try {
+      await openViewerError("extract");
+    } catch (openError) {
+      console.error("Failed to open error viewer:", openError);
+    }
+    throw error;
+  }
 }
 
 async function openViewerError(error: "extract"): Promise<void> {
@@ -224,7 +246,7 @@ chrome.action.onClicked.addListener(async () => {
       currentWindow: true,
     });
 
-    // タブが取得できない場合は何もしない
+    // 対象タブが取得できない場合も、抽出できないことを画面に表示する
     if (!tab?.id) {
       await openViewerError("extract");
       return;
@@ -274,7 +296,10 @@ chrome.runtime.onMessage.addListener(
         void (async () => {
           await registerViewerTab(tabId, id);
           await sendFallbackIfPending(tabId, id);
-        })();
+        })().catch((error) => {
+          // 登録中・配信中にタブが閉じる場合も、未処理の Promise にしない。
+          console.error("Failed to register or deliver viewer images:", error);
+        });
       }
       return;
     }
@@ -283,7 +308,13 @@ chrome.runtime.onMessage.addListener(
       return;
     }
 
-    void deliverImagesToViewer(normalizeAndDedupeUrls(message.payload ?? []));
+    void deliverImagesToViewer(normalizeAndDedupeUrls(message.payload ?? [])).catch(
+      (error) => {
+        // 作成済みの一覧は保持する。登録失敗で追加のエラー画面を開かない。
+        // タブ作成失敗時の掃除と案内は openViewerTab が担当する。
+        console.error("Failed to deliver images:", error);
+      },
+    );
   },
 );
 
