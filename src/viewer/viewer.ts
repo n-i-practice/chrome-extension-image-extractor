@@ -168,6 +168,19 @@ function createImageRecord(url: string): ImageRecord {
 // ===============================
 // カード生成
 // ===============================
+/**
+ * カード下部メタ行の文言。サイズ未取得時は — を使う（数値と記号のみなので i18n 不要）。
+ */
+function formatCardMeta(
+  width: number,
+  height: number,
+  ext: string,
+): string {
+  const size = width > 0 && height > 0 ? `${width}x${height}` : "—";
+  const type = ext || "—";
+  return `${size} · ${type}`;
+}
+
 function createCard(record: ImageRecord): void {
   const div = document.createElement("div");
   div.className = "item";
@@ -177,17 +190,31 @@ function createCard(record: ImageRecord): void {
   div.dataset.width = "0";
   div.dataset.height = "0";
 
+  // 上: サムネ / 下: サイズ・拡張子（メタ情報の第1段）
+  const thumbWrap = document.createElement("div");
+  thumbWrap.className = "item-thumb";
+
   const img = document.createElement("img");
   img.className = "thumb";
   img.src = record.src;
+  thumbWrap.appendChild(img);
 
-  // naturalWidth / naturalHeight の取得（サイズフィルター用）
+  const meta = document.createElement("div");
+  meta.className = "item-meta";
+  meta.textContent = formatCardMeta(0, 0, record.ext);
+
+  // naturalWidth / naturalHeight の取得（サイズフィルター・メタ行用）
   img.onload = () => {
     record.naturalWidth = img.naturalWidth;
     record.naturalHeight = img.naturalHeight;
     record.isValid = true;
     div.dataset.width = String(record.naturalWidth);
     div.dataset.height = String(record.naturalHeight);
+    meta.textContent = formatCardMeta(
+      record.naturalWidth,
+      record.naturalHeight,
+      record.ext,
+    );
     applyFilters();
   };
 
@@ -200,8 +227,8 @@ function createCard(record: ImageRecord): void {
     }
   };
 
-  // 画像クリック → 拡大表示（表示中一覧上の位置で開く）
-  img.addEventListener("click", () => {
+  // サムネ・メタ行どちらをクリックしても拡大表示を開く
+  div.addEventListener("click", () => {
     const items = getVisibleItems();
     const index = items.indexOf(div);
     if (index < 0) {
@@ -210,7 +237,8 @@ function createCard(record: ImageRecord): void {
     openModalAtIndex(index);
   });
 
-  div.appendChild(img);
+  div.appendChild(thumbWrap);
+  div.appendChild(meta);
   grid.appendChild(div);
 }
 
@@ -701,7 +729,7 @@ document.addEventListener("keydown", (event: KeyboardEvent) => {
 });
 
 // ===============================
-// 拡大 / 原寸大切り替え
+// 拡大 / 原寸大切り替え（ボタン）
 // ===============================
 zoomBtn.addEventListener("click", () => {
   if (viewerState === ViewerState.ZOOM) {
@@ -712,36 +740,81 @@ zoomBtn.addEventListener("click", () => {
 });
 
 // ===============================
-// 原寸大ドラッグ処理
+// 画像クリックで拡大 ↔ 原寸、原寸時はドラッグ
 // ===============================
+/** 原寸表示中のパン中かどうか */
 let isDragging = false;
+/** 画像上でポインタ押下中か（拡大・原寸とも、ドラッグ判定に使う） */
+let isPointerDownOnImage = false;
+/** 今回のポインタ操作で閾値以上動いたか（動いたら click での表示切替を抑止） */
+let dragMoved = false;
 let startX = 0;
 let startY = 0;
 let imgX = 0;
 let imgY = 0;
+/** クリックとドラッグを区別する移動量（px） */
+const DRAG_THRESHOLD_PX = 4;
+
+/**
+ * 原寸表示が画面より大きく意味があるか（ズームボタン表示と同条件）。
+ */
+function canShowOriginalSize(): boolean {
+  return (
+    modalImg.naturalWidth > window.innerWidth ||
+    modalImg.naturalHeight > window.innerHeight
+  );
+}
 
 modalImg.addEventListener("mousedown", (e: MouseEvent) => {
-  if (viewerState !== ViewerState.ORIGINAL) return;
+  if (
+    viewerState !== ViewerState.ZOOM &&
+    viewerState !== ViewerState.ORIGINAL
+  ) {
+    return;
+  }
+  if (e.button !== 0) {
+    return;
+  }
 
+  // ブラウザの画像ドラッグゴーストを抑止
   e.preventDefault();
   modalImg.draggable = false;
 
-  isDragging = true;
-  modalImg.classList.add("dragging");
-
+  isPointerDownOnImage = true;
+  dragMoved = false;
   startX = e.clientX;
   startY = e.clientY;
 
-  const rect = modalImg.getBoundingClientRect();
-  imgX = rect.left;
-  imgY = rect.top;
+  // 原寸時のみパン開始。クリックだけの場合は mouseup → click で表示切替する
+  if (viewerState === ViewerState.ORIGINAL) {
+    isDragging = true;
+    modalImg.classList.add("dragging");
+
+    const rect = modalImg.getBoundingClientRect();
+    imgX = rect.left;
+    imgY = rect.top;
+  }
 });
 
 document.addEventListener("mousemove", (e: MouseEvent) => {
-  if (!isDragging) return;
+  if (!isPointerDownOnImage) return;
 
   const dx = e.clientX - startX;
   const dy = e.clientY - startY;
+
+  // 拡大表示でもドラッグなら原寸へ切り替えない（何もしない）
+  if (
+    !dragMoved &&
+    (Math.abs(dx) >= DRAG_THRESHOLD_PX || Math.abs(dy) >= DRAG_THRESHOLD_PX)
+  ) {
+    dragMoved = true;
+    // 拡大表示中のドラッグは無効であることをカーソルで示す
+    if (viewerState === ViewerState.ZOOM) {
+      modalImg.classList.add("drag-not-allowed");
+    }
+  }
+
+  if (!isDragging) return;
 
   let newLeft = imgX + dx;
   let newTop = imgY + dy;
@@ -775,8 +848,23 @@ document.addEventListener("mousemove", (e: MouseEvent) => {
 });
 
 document.addEventListener("mouseup", () => {
+  isPointerDownOnImage = false;
   isDragging = false;
-  modalImg.classList.remove("dragging");
+  modalImg.classList.remove("dragging", "drag-not-allowed");
+});
+
+// ドラッグせずに画像をクリックしたときだけ表示モードを切り替える
+modalImg.addEventListener("click", () => {
+  if (dragMoved) {
+    dragMoved = false;
+    return;
+  }
+
+  if (viewerState === ViewerState.ZOOM && canShowOriginalSize()) {
+    enterOriginalState();
+  } else if (viewerState === ViewerState.ORIGINAL) {
+    enterZoomState();
+  }
 });
 
 // ===============================
@@ -805,8 +893,10 @@ function enterGridState(): void {
  */
 function resetToZoomLayout(): void {
   viewerState = ViewerState.ZOOM;
+  isPointerDownOnImage = false;
   isDragging = false;
-  modalImg.classList.remove("original", "dragging");
+  dragMoved = false;
+  modalImg.classList.remove("original", "dragging", "can-zoom-in", "drag-not-allowed");
   modalImg.style.left = "0px";
   modalImg.style.top = "0px";
   zoomBtn.classList.add("hidden");
@@ -816,29 +906,27 @@ function resetToZoomLayout(): void {
 }
 
 /**
- * 読み込み済み画像の自然サイズに応じてズームボタン表示を更新する。
- * 画面に収まる画像ではボタン自体を非表示にする。
+ * 読み込み済み画像の自然サイズに応じてズームボタン・カーソルを更新する。
+ * 画面に収まる画像ではボタンを隠し、クリックでの原寸切替も不可にする。
  */
 function updateZoomControlsForCurrentImage(): void {
   if (viewerState !== ViewerState.ZOOM) {
     return;
   }
 
-  const naturalWidth = modalImg.naturalWidth;
-  const naturalHeight = modalImg.naturalHeight;
-  const winWidth = window.innerWidth;
-  const winHeight = window.innerHeight;
-  const fitsInViewport =
-    naturalWidth <= winWidth && naturalHeight <= winHeight;
+  const fitsInViewport = !canShowOriginalSize();
 
   if (fitsInViewport) {
     zoomBtn.classList.add("hidden");
     zoomInIcon.style.display = "none";
     zoomOutIcon.style.display = "none";
+    modalImg.classList.remove("can-zoom-in");
   } else {
     zoomBtn.classList.remove("hidden");
     zoomInIcon.style.display = "block";
     zoomOutIcon.style.display = "none";
+    // 原寸へ切り替え可能なときだけ虫眼鏡（拡大）カーソル
+    modalImg.classList.add("can-zoom-in");
   }
 
   updateModalAriaLabels();
@@ -885,6 +973,8 @@ window.addEventListener("resize", () => {
 function enterOriginalState(): void {
   viewerState = ViewerState.ORIGINAL;
 
+  // can-zoom-in を外し、.original の zoom-out カーソルにする
+  modalImg.classList.remove("can-zoom-in");
   modalImg.classList.add("original");
 
   zoomBtn.classList.remove("hidden");
