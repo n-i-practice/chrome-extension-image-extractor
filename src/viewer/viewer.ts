@@ -71,8 +71,10 @@ function setBackgroundInert(enabled: boolean): void {
   }
 }
 
-/** 読み込み済み画像件数（言語切替時の件数表示再描画用） */
+/** 抽出で受け取った画像URL件数（失敗しても減らさない。言語切替時の再描画用） */
 let totalImageCount = 0;
+/** サムネ読み込みに失敗してカードを除外した件数 */
+let failedImageCount = 0;
 /** init 完了後に true。それまでは件数文言を出さない */
 let imagesLoaded = false;
 /** session / fallback 由来の通知（切り詰め・一時受け渡し） */
@@ -189,6 +191,8 @@ function createCard(record: ImageRecord): void {
   div.dataset.src = record.src;
   div.dataset.width = "0";
   div.dataset.height = "0";
+  // pending: サイズ未確定。loaded になってからフィルター判定する
+  div.dataset.loadState = "pending";
 
   // 上: サムネ / 下: サイズ・拡張子（メタ情報の第1段）
   const thumbWrap = document.createElement("div");
@@ -208,6 +212,7 @@ function createCard(record: ImageRecord): void {
     record.naturalWidth = img.naturalWidth;
     record.naturalHeight = img.naturalHeight;
     record.isValid = true;
+    div.dataset.loadState = "loaded";
     div.dataset.width = String(record.naturalWidth);
     div.dataset.height = String(record.naturalHeight);
     meta.textContent = formatCardMeta(
@@ -220,6 +225,7 @@ function createCard(record: ImageRecord): void {
 
   img.onerror = () => {
     record.isValid = false;
+    failedImageCount += 1;
     div.remove(); // 読み込み失敗は除外
     // 除去後の件数とモーダル位置をまとめて再評価する。最後の失敗でも0件にする。
     applyFilters();
@@ -359,6 +365,10 @@ function syncModalAfterFilterChange(): void {
 // ===============================
 // フィルター適用処理
 // ===============================
+/**
+ * カードを読み込み中 / 表示中 / フィルター非表示に分けて再評価する。
+ * 失敗件数はカード除去時に failedImageCount へ積む。
+ */
 function applyFilters(): void {
   const hideSvg = filterSvgCheckbox.checked;
   const hideGif = filterGifCheckbox.checked;
@@ -366,8 +376,17 @@ function applyFilters(): void {
   const items = grid.querySelectorAll<HTMLDivElement>(".item");
 
   let visible = 0;
+  let loading = 0;
+  let filtered = 0;
 
   items.forEach((item) => {
+    // サイズ未確定の間は一覧に出さず、フィルター非表示とも分けて数える
+    if (item.dataset.loadState !== "loaded") {
+      loading += 1;
+      item.style.display = "none";
+      return;
+    }
+
     const ext = item.dataset.ext ?? "";
     const width = Number(item.dataset.width ?? "0");
     const height = Number(item.dataset.height ?? "0");
@@ -388,15 +407,37 @@ function applyFilters(): void {
 
     item.style.display = hidden ? "none" : "";
 
-    if (!hidden) {
-      visible++;
+    if (hidden) {
+      filtered += 1;
+    } else {
+      visible += 1;
     }
   });
 
-  // 表示中件数を更新
-  visibleCount.textContent = t("status.visibleCount", { count: visible });
+  updateStatusCounts(visible, loading, filtered);
   // モーダル表示中に可視集合が変わったら前後ナビの位置も合わせる
   syncModalAfterFilterChange();
+}
+
+/**
+ * 表示中を必須とし、読み込み中・失敗・フィルター非表示は件数があるときだけ併記する。
+ */
+function updateStatusCounts(
+  visible: number,
+  loading: number,
+  filtered: number,
+): void {
+  const parts = [t("status.visibleCount", { count: visible })];
+  if (loading > 0) {
+    parts.push(t("status.loadingCount", { count: loading }));
+  }
+  if (failedImageCount > 0) {
+    parts.push(t("status.failedCount", { count: failedImageCount }));
+  }
+  if (filtered > 0) {
+    parts.push(t("status.filteredCount", { count: filtered }));
+  }
+  visibleCount.textContent = parts.join(" · ");
 }
 
 // ===============================
@@ -622,7 +663,9 @@ async function init(): Promise<void> {
     pageError = "extract";
     imagesLoaded = true;
     totalImageCount = 0;
+    failedImageCount = 0;
     updateInfoText();
+    updateStatusCounts(0, 0, 0);
     renderNotices();
     return;
   }
@@ -671,10 +714,12 @@ async function init(): Promise<void> {
 
   imagesLoaded = true;
   totalImageCount = images.length;
+  failedImageCount = 0;
   updateInfoText();
   renderNotices();
 
   if (images.length === 0) {
+    updateStatusCounts(0, 0, 0);
     return;
   }
 
@@ -682,6 +727,8 @@ async function init(): Promise<void> {
     const record = createImageRecord(url);
     createCard(record);
   });
+  // 読み込み完了前の「読み込み中」件数をすぐ出す
+  applyFilters();
 }
 
 // ===============================

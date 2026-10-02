@@ -13,6 +13,9 @@ export const ja: Messages = {
   "status.imageCount": "{count} 件の画像",
   "status.noImages": "画像がありません",
   "status.visibleCount": "表示中：{count}件",
+  "status.loadingCount": "読み込み中：{count}件",
+  "status.failedCount": "失敗：{count}件",
+  "status.filteredCount": "フィルター非表示：{count}件",
   "status.filterActive":
     "適用中：横 ≥ {width}px / 縦 ≥ {height}px",
   "status.truncated":

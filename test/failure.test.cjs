@@ -239,7 +239,7 @@ test("サムネ読み込み失敗でカード・表示件数を更新し、前�
   const h = await createViewerHarness(t);
   h.failThumbnail(1);
   assert.equal(h.cards.length, 2);
-  assert.equal(h.el("visible-count").textContent, "Showing: 2 images");
+  assert.equal(h.el("visible-count").textContent, "Showing: 2 · Failed: 1");
   h.open(0);
   h.key("ArrowRight");
   assert.equal(h.img.getAttribute("src"), urls[2]);
@@ -255,7 +255,7 @@ test("現在画像の読み込みが失敗したら閉じ、最後の失敗で�
   assert.equal(h.document.querySelector("main").hasAttribute("inert"), false);
   h.failThumbnail(0);
   h.failThumbnail(0);
-  assert.equal(h.el("visible-count").textContent, "Showing: 0 images");
+  assert.equal(h.el("visible-count").textContent, "Showing: 0 · Failed: 3");
 });
 
 test("後から失敗したサムネがあっても、残った現在画像とナビ位置を保持する", async t => {

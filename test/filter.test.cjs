@@ -34,13 +34,34 @@ function toggle(h, ext, checked) {
   h.el("filter-" + ext).checked = checked;
   h.el("filter-" + ext).dispatchEvent(new h.window.Event("change", { bubbles: true }));
 }
-function assertVisible(h, indices) {
+function formatStatus({ showing, loading = 0, failed = 0, filtered = 0 }, locale = "en") {
+  if (locale === "ja") {
+    const parts = ["表示中：" + showing + "件"];
+    if (loading) parts.push("読み込み中：" + loading + "件");
+    if (failed) parts.push("失敗：" + failed + "件");
+    if (filtered) parts.push("フィルター非表示：" + filtered + "件");
+    return parts.join(" · ");
+  }
+  const parts = ["Showing: " + showing];
+  if (loading) parts.push("Loading: " + loading);
+  if (failed) parts.push("Failed: " + failed);
+  if (filtered) parts.push("Hidden by filter: " + filtered);
+  return parts.join(" · ");
+}
+function assertVisible(h, indices, { failed = 0 } = {}) {
   const cards = [...h.document.querySelectorAll("#grid .item")];
   assert.deepEqual(
     cards.filter(card => card.style.display !== "none").map(card => card.dataset.src),
     indices.map(index => IMAGES[index].src),
   );
-  assert.equal(h.el("visible-count").textContent, "Showing: " + indices.length + " images");
+  const loading = cards.filter(card => card.dataset.loadState !== "loaded").length;
+  const filtered = cards.filter(
+    card => card.dataset.loadState === "loaded" && card.style.display === "none",
+  ).length;
+  assert.equal(
+    h.el("visible-count").textContent,
+    formatStatus({ showing: indices.length, loading, failed, filtered }),
+  );
 }
 function assertActive(h, width, height) {
   assert.equal(h.el("filter-info").textContent,
@@ -265,9 +286,14 @@ test("遅れて読み込んだ画像にも確定済み条件を使い、未適�
   toggle(h, "svg", true);
   editSize(h, 0, 0);
   assertVisible(h, []);
+  assert.equal(h.el("visible-count").textContent, formatStatus({ showing: 0, loading: 7 }));
   h.loadThumbnail(3); // 形式で除外
   h.loadThumbnail(0); // サイズで除外
   assertVisible(h, []);
+  assert.equal(
+    h.el("visible-count").textContent,
+    formatStatus({ showing: 0, loading: 5, filtered: 2 }),
+  );
   h.loadThumbnail(5);
   assertVisible(h, [5]);
   h.loadThumbnail(4);
@@ -281,6 +307,10 @@ test("先行するカードが遅れて表示されても、拡大中の現在�
   h.loadThumbnail(5);
   h.open(5);
   assert.ok(hidden(h.el("prev-btn")));
+  assert.equal(
+    h.el("visible-count").textContent,
+    formatStatus({ showing: 1, loading: 6 }),
+  );
   h.loadThumbnail(3);
   h.loadThumbnail(6);
   assertVisible(h, [3, 5, 6]);
@@ -294,6 +324,31 @@ test("先行するカードが遅れて表示されても、拡大中の現在�
   assert.equal(h.img.getAttribute("src"), IMAGES[6].src);
 });
 
+test("表示件数は読み込み中・失敗・フィルター非表示を分けて示す", async t => {
+  const h = await setup(t, { autoLoad: false });
+  assert.equal(h.el("info").textContent, "7 images");
+  assert.equal(h.el("visible-count").textContent, formatStatus({ showing: 0, loading: 7 }));
+
+  // 先に失敗させると、以降のカード index が詰まる
+  h.failThumbnail(2);
+  assert.equal(
+    h.el("visible-count").textContent,
+    formatStatus({ showing: 0, loading: 6, failed: 1 }),
+  );
+
+  h.loadThumbnail(0);
+  h.loadThumbnail(1);
+  assert.equal(
+    h.el("visible-count").textContent,
+    formatStatus({ showing: 1, loading: 4, failed: 1, filtered: 1 }),
+  );
+  assert.equal(h.el("info").textContent, "7 images");
+
+  // 失敗で詰まったあとの 2..5 は元の 3..6
+  for (let index = 2; index <= 5; index++) h.loadThumbnail(index);
+  assertVisible(h, [0, 3, 4, 5, 6], { failed: 1 });
+});
+
 test("言語変更後も確定した条件・未適用の入力・表示件数を維持する", async t => {
   const h = await setup(t);
   applySize(h, 800, 800);
@@ -302,7 +357,7 @@ test("言語変更後も確定した条件・未適用の入力・表示件数�
   h.el("locale-select").value = "ja";
   h.el("locale-select").dispatchEvent(new h.window.Event("change", { bubbles: true }));
   await nextTurn();
-  assert.equal(h.el("visible-count").textContent, "表示中：2件");
+  assert.equal(h.el("visible-count").textContent, formatStatus({ showing: 2, filtered: 5 }, "ja"));
   assert.equal(h.el("filter-info").textContent, "適用中：横 ≥ 800px / 縦 ≥ 800px");
   assert.equal(h.el("min-width").value, "0");
   assert.equal(h.el("min-height").value, "0");
