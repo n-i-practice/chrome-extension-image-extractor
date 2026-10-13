@@ -5,6 +5,7 @@ export type MessageParams = Record<string, string | number>;
 /** 辞書キーは en.ts のキーを正とする */
 export type MessageKey =
   | "page.title"
+  | "support.link"
   | "filter.minSizeTitle"
   | "filter.width"
   | "filter.height"

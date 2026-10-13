@@ -191,28 +191,30 @@ viewer:
 
 ## Manifest V3 の正式定義
 
-```
+```json
 {
   "manifest_version": 3,
-  "name": "Image Extractor",
+  "default_locale": "en",
+  "name": "__MSG_appName__",
   "version": "1.0",
-  "action": {
-    "default_title": "Image Extractor"
-  },
+  "description": "__MSG_appDescription__",
+
+  "permissions": ["activeTab", "scripting", "storage"],
+
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "scripts/background.js",
+    "type": "module"
   },
-  "permissions": [
-    "activeTab",
-    "tabs",
-    "scripting",
-    "storage"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ]
+
+  "action": {
+    "default_title": "__MSG_actionTitle__"
+  }
 }
 ```
+
+権限はアイコン押下時の一時アクセス（`activeTab`）、画像抽出処理の注入（`scripting`）、画像一覧・参照情報・言語設定の保存（`storage`）に限定する。タブIDでの管理に `tabs` 権限は不要。全サイトへの `host_permissions` は要求しない。
+
+抽出スクリプトは `scripting.executeScript` で注入するため、`web_accessible_resources` として外部ページへ公開しない。将来のDOM監視もアイコン押下後の元ページ内で開始する範囲では、この権限構成を使用する。
 
 ---
 

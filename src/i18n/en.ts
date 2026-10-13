@@ -2,6 +2,7 @@ import type { Messages } from "./types";
 
 export const en: Messages = {
   "page.title": "Image Gallery",
+  "support.link": "Support me on Ko-fi",
   "filter.minSizeTitle": "Minimum size (px)",
   "filter.width": "Width",
   "filter.height": "Height",

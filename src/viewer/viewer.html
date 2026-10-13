@@ -12,16 +12,33 @@
         <!-- フィルター前の件数 -->
         <p id="info"></p>
 
-        <div class="lang-select">
-          <label for="locale-select" data-i18n="lang.label">Language</label>
-          <select
-            id="locale-select"
-            data-i18n="lang.label"
-            data-i18n-attr="aria-label"
+        <div class="header-actions">
+          <div class="lang-select">
+            <label for="locale-select" data-i18n="lang.label">Language</label>
+            <select
+              id="locale-select"
+              data-i18n="lang.label"
+              data-i18n-attr="aria-label"
+            >
+              <option value="en" data-i18n="lang.en">English</option>
+              <option value="ja" data-i18n="lang.ja">日本語</option>
+            </select>
+          </div>
+          <!-- Official Ko-fi image: https://storage.ko-fi.com/cdn/kofi6.png?v=6 -->
+          <a
+            class="support-link"
+            href="https://ko-fi.com/F8U228LZP5"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            <option value="en" data-i18n="lang.en">English</option>
-            <option value="ja" data-i18n="lang.ja">日本語</option>
-          </select>
+            <img
+              src="./assets/kofi-button.png"
+              height="36"
+              alt="Support me on Ko-fi"
+              data-i18n="support.link"
+              data-i18n-attr="alt"
+            />
+          </a>
         </div>
       </div>
 

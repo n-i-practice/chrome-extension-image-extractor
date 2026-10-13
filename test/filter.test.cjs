@@ -369,3 +369,30 @@ test("言語変更後も確定した条件・未適用の入力・表示件数�
   assertVisible(h, [4, 5]);
   assertActive(h, 800, 800);
 });
+
+test("拡張子のないURL・blob・dataをパスとして表示せず、形式フィルターで誤判定しない", async t => {
+  const samples = [
+    { src: "https://www.gogojungle.co.jp/img/products/71895/outlines/10", ext: "" },
+    { src: "blob:https://www.gogojungle.co.jp/98cbef5c-2b76-4904-80ff-e077fa59e546", ext: "" },
+    { src: "data:image/png;base64,AAAA", ext: "" },
+    { src: "https://example.test/folder.svg/image", ext: "" },
+    { src: "https://example.test/image?name=photo.gif", ext: "" },
+    { src: "https://example.test/", ext: "" },
+    { src: "https://example.test/image.", ext: "" },
+    { src: "https://example.test/image.backup.PNG?v=1#preview", ext: "png" },
+    { src: "https://example.test/vector.SVG?size=large", ext: "svg" },
+    { src: "https://example.test/animation.GIF#preview", ext: "gif" },
+  ];
+  const h = await createViewerHarness(t, {
+    images: samples.map(({ src }) => ({ src, width: 800, height: 600 })),
+  });
+  samples.forEach(({ src, ext }, index) => {
+    assert.equal(h.cards[index].dataset.ext, ext, src);
+    assert.equal(h.cards[index].querySelector(".item-meta").textContent,
+      `800x600 · ${ext || "—"}`, src);
+  });
+  toggle(h, "svg", true);
+  toggle(h, "gif", true);
+  assert.deepEqual(h.cards.filter(card => card.style.display !== "none").map(card => card.dataset.src),
+    samples.filter(({ ext }) => ext !== "svg" && ext !== "gif").map(({ src }) => src));
+});

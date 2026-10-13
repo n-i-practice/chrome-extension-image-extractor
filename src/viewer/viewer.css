@@ -20,6 +20,34 @@ header {
   margin-bottom: 4px;
 }
 
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.support-link {
+  display: inline-flex;
+  border-radius: 6px;
+}
+
+.support-link img {
+  display: block;
+  height: 36px;
+  width: auto;
+  border: 0;
+}
+
+.support-link:hover {
+  opacity: 0.85;
+}
+
+.support-link:focus-visible {
+  outline: 2px solid #284b8a;
+  outline-offset: 3px;
+}
+
 .lang-select {
   display: inline-flex;
   align-items: center;

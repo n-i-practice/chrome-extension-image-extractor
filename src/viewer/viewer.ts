@@ -133,9 +133,14 @@ function commitMinSizeFilter(): void {
 // ===============================
 function getExtension(url: string): string {
   try {
-    const pathname = new URL(url).pathname;
-    const ext = pathname.split(".").pop()?.toLowerCase() ?? "";
-    return ext;
+    const parsed = new URL(url);
+    // blob / data のパスはファイル名ではないため、拡張子として扱わない。
+    if (parsed.protocol === "blob:" || parsed.protocol === "data:") {
+      return "";
+    }
+    // ディレクトリ内のドットや、拡張子のないパス全体を拾わない。
+    const filename = parsed.pathname.slice(parsed.pathname.lastIndexOf("/") + 1);
+    return filename.match(/.+\.([a-z0-9]+)$/i)?.[1].toLowerCase() ?? "";
   } catch {
     return "";
   }

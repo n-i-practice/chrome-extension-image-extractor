@@ -2,6 +2,7 @@ import type { Messages } from "./types";
 
 export const ja: Messages = {
   "page.title": "画像一覧",
+  "support.link": "Ko-fiで開発を支援する",
   "filter.minSizeTitle": "最小サイズ（px）",
   "filter.width": "横",
   "filter.height": "縦",
