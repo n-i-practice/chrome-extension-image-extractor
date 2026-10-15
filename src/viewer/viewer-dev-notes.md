@@ -3,8 +3,10 @@
 ## 1. 拡張のデータ連携（content → background → viewer）
 
 - 画像一覧は `chrome.storage.session` を使って viewer に渡す
-- viewer 側では `chrome.storage.session.get("images")` で受け取る
-- SPA や動的ページでも安定して画像一覧を表示できる
+- viewerはURLの `id` に対応する `images:<id>` を `chrome.storage.session` から読み込む
+- 複製したviewerは同じ一覧を参照し、最後の参照タブを閉じたときに削除する
+- session保存に失敗した場合はメッセージ配信へ切り替える。この経路では再読み込みで一覧が失われる場合がある
+- 抽出はアイコンを押した時点のみ。SPAやスクロール後の動的追加画像の継続収集は未実装で、候補は [TODO](../../docs/TODO.md) で管理する
 - content → background → viewer の流れを明確にすると実装が迷わない
 
 ## 2. Viewer の状態管理（State Machine）

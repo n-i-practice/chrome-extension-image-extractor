@@ -1,131 +1,76 @@
-# 📘 Image Extractor — 仕様書（viewerの仕様はVIEWER_SPER.mdを参照）
+# Image Extractor — 全体仕様
+
+本書は現在実装されている動作を記載する。Viewerの詳細は [VIEWER_SPEC.md](VIEWER_SPEC.md)、未実装機能と公開準備の進捗は [TODO.md](TODO.md) を参照。
 
 ## 概要
 
-**Image Extractor** は、アクティブタブに表示されているすべての画像を抽出し、新しいタブ（viewer）で一覧表示する Chrome 拡張です。
+Image Extractorは、拡張アイコンを押した時点のアクティブタブから画像URLを抽出し、新しいタブのViewerで一覧・拡大・原寸表示するManifest V3のChrome拡張。
 
-抽出対象には、通常の `<img>` だけでなく、CSS や JavaScript によって生成・追加された画像、blob URL、相対パスなど、ページ上で画像として扱われる可能性があるものを広く含みます。
+ページ内の全画像を取得できることは保証しない。元ページのDOMにまだ存在しない画像や、配信元の制限でViewerから読み込めない画像は表示できない。
 
-本拡張は **Manifest V3 を前提**とし、
+## 実装済みの主な機能
 
-- popup は使用せず、拡張アイコンクリック時に `chrome.action.onClicked` で viewer を開く
-- content script が DOM と CSS を走査
-- URL を正規化し重複除外
-- background が viewer を開く
-- viewer が自然サイズと最小サイズフィルタを適用する
+- `<img>` とCSSの背景画像から画像URLを抽出する。
+- 相対URLの絶対化と、正規化後のURL完全一致による重複除外。
+- 別タブでの一覧表示、自然サイズ・URLから判定した拡張子の表示。
+- 最小幅・最小高さフィルター（初期値は両方400px）と、SVG / GIFの非表示フィルター。
+- 読み込み中・表示中・失敗・フィルター非表示の件数表示。読み込みに失敗した画像は一覧から除外する。
+- 画像カードのクリックでモーダルを開く。拡大・原寸表示、原寸画像のドラッグ、前後移動、Escapeなどでの終了に対応。
+- 日本語・英語の切り替えと、言語設定の保存。
+- Viewerごとの一覧の分離と、複製したViewer間での同じ一覧の保持。
+- 抽出失敗・保存失敗・保存件数上限・画像読み込み失敗の案内。
 
-という実行モデルで動作します。
+## 実行モデル
 
-CSS 画像の抽出は **best effort** とし、ブラウザ制約により完全抽出は保証しません。
+1. `chrome.action.onClicked` でアクティブタブを確認する。popupは使用しない。
+2. 初回は `scripting.executeScript` でcontent scriptを注入し、画像を抽出する。
+3. 同じページで再度アイコンを押した場合は、登録済みの `window.extractImages()` を呼び、改めて抽出する。
+4. content scriptは、その実行時点のDOMと適用済みスタイルを一括走査し、URLを正規化・重複除外してbackgroundへ送る。
+5. backgroundはURLを再度正規化・重複除外し、最大1500件をセッションへ保存して新しいViewerを開く。
+6. Viewerは一覧を読み込み、画像の自然サイズが確定するとフィルターと件数を更新する。
 
-### ● background の役割
+DOMの継続監視・追加画像の自動追記・一定時間後の監視終了は実装していない。スクロール後の画像を取得するには、元ページで読み込ませてから再度アイコンを押す。再抽出では既存一覧へ追記せず、新しい一覧を開く。
 
-- `chrome.action.onClicked` を受信して viewer を開く
-- content script から画像リストを受信
-- `chrome.storage.session` に画像リストを保存
-- viewer タブを開く
+## 抽出対象と制限
 
----
-
-## 目的（Requirements）
-
-- アクティブタブに表示されている画像をすべて取得
-- CSS / JS 制御の画像も取得
-- CSS の `background-image` / `content: url()` を含む
-- blob / object URL / 相対パスも抽出
-- 抽出した画像を **新しいタブ（viewer）** で一覧表示
-- viewer で **最小サイズフィルタ（初期値：400×400）**
-- URL一致の重複除外（正規化後一致）
-- 読み込み失敗画像は viewer 側で除外
-- Lazy Load による高速表示
-- 画像クリックで元画像を新しいタブで開く
-- srcset は最大解像度を抽出
-- Optional：Zip ダウンロード
-
----
-
-## 実行モデル（重要）
-
-### ● content script の実行タイミング
-
-1. アイコンクリック時（スクリプト注入時）に初回スキャンを実行
-2. MutationObserver で追加画像を監視
-3. 追加画像は debounce（300ms）でまとめて処理
-4. SPA（Instagram / X / Pinterest）でも継続収集
-5. 画像が一定時間（例：5秒）増えなければ収集終了
-
-### ● background の役割
-
-- content script から画像リストを受信
-- URL 正規化・重複除外
-- `chrome.storage.session` に画像リストを保存
-- viewer タブを開く
-
----
-
-## データ構造（ImageRecord）※必須
-
-```
-ImageRecord {
-  id: string,                 // v1必須: 重複除外・DOM管理に必要
-  src: string,                // v1必須: 正規化済みURL（最重要）
-  ext: string,                // v1必須: 拡張子（svg/gif/png/jpg/webp）フィルタ用
-  srcType: string,            // v1任意: img/background/srcset/blob/data（v2以降で有用）
-  origin: string,             // v1任意: 抽出元の簡易情報（詳細はv2以降）
-  naturalWidth: number,       // v1必須: 最小サイズフィルタに必要
-  naturalHeight: number,      // v1必須: 最小サイズフィルタに必要
-  isValid: boolean            // v1必須: viewer側で読み込み失敗を除外するため必要
-}
-```
-
----
-
-## 抽出対象（拡張版）
-
-- `<img>` の `src`
-- `<source>` / `<picture>` の `srcset`
-- CSS の `background-image`
-- CSS の `content: url()`
-- 動的追加画像（MutationObserver）
-- blob URL（`blob:`）
-- object URL（`URL.createObjectURL()`）
-- 相対パス（絶対 URL に変換）
-- `<video poster>`
-- `<link rel="preload" as="image">`
-- `<meta property="og:image">`
-
-### ● CSS 抽出の制約（best effort）
-
-- cross-origin stylesheet の cssRules は参照不可
-- computed style / CSSOM の範囲で可能な限り抽出
-- CSS 画像の完全抽出は保証しない
-
----
+- `<img>` 自身に `srcset` がある場合は候補を選択し、候補がなければ `currentSrc`、次に `src` を使用する。
+- `<picture>` / `<source>` の `srcset` を直接走査する処理はない。ブラウザーが選択済みのURLは、内側の `<img>` の `currentSrc` から取得する場合がある。
+- 要素と疑似要素（`::before` / `::after`）の、適用済み `background-image` から `url(...)` を抽出する。グラデーションは画像URLとして扱わない。
+- CSSは `getComputedStyle` で取得し、スタイルシートの全ルールを直接走査しない。CSS画像の完全抽出は保証しない。
+- 既存要素の `blob:` / `data:` URLも正規化経路で保持する。ただし、元ページが生成したobject URLの別タブでの表示や、各形式の対応範囲は未検証部分がある。object URLを別途生成・探索する機能はない。
+- `<meta property="og:image">`、`<video poster>`、CSS `content: url()`、`<link rel="preload" as="image">` の専用抽出処理はない。追加候補は [TODO.md](TODO.md) に集約する。
 
 ## URL重複除外（正規化）
 
-### ● 正規化ルール
+- 相対パスは `new URL(path, location.href)` で絶対化する。
+- 空・無効なURLは除外する。
+- HTTP / HTTPSやクエリが異なるURLは別物として扱う。
+- `blob:` / `data:` は前後の空白を除いた文字列を使用する。
+- 正規化後のURLが完全一致するものを、出現順を維持して1件にまとめる。画像内容のハッシュ比較は行わない。
 
-- 相対パス → `new URL(path, location.href)`
-- http/https は別物
-- クエリ（?v=123）は別物
-- blob / data URL は文字列一致
+## srcsetの候補選択
 
-### ● 重複除外条件
+- `w` は数値が大きい候補、`x` は倍率が大きい候補を選ぶ。
+- descriptorのない有効な候補がある場合は、走査順で最初の該当URLを返す。
+- 有効な候補がない場合は、呼び出し元で `currentSrc` / `src` を使用する。
+- 選択したURLの読み込みに失敗しても、次のsrcset候補へは切り替えない。失敗時の候補フォールバックは [TODO.md](TODO.md) の機能追加候補。
 
+## Viewer内のデータ構造
+
+backgroundからViewerへ渡す画像一覧はURLの配列（`string[]`）。ViewerはURLごとに次のレコードを生成する。
+
+```ts
+interface ImageRecord {
+  id: string;
+  src: string;
+  ext: string;
+  naturalWidth: number;
+  naturalHeight: number;
+  isValid: boolean;
+}
 ```
-正規化後の src が完全一致した場合、重複とみなす
-```
 
----
-
-## srcset の最大解像度抽出
-
-- `w` → 最大幅
-- `x` → 最大倍率
-- 並び順は無視
-- descriptor がない場合 → 最初の URL
-- 404 / invalid の場合は次候補にフォールバック
+自然サイズは読み込み前には0、`isValid` はfalse。読み込み成功後に更新する。拡張子はURLから判定し、不明な場合は「—」を表示する。画像本体やMIMEタイプからの形式判定は行わない。
 
 ---
 
@@ -139,8 +84,13 @@ content → background:
 
 background → session:
   chrome.storage.session.set({
-    "images:<id>": string[],   // 一覧本体
-    "viewerTab:<tabId>": "<id>" // タブ閉じ時の掃除用
+    "images:<id>": string[],       // 一覧本体
+    "imagesNotice:<id>": ImagesNotice // 件数上限・受け渡し方法の通知
+  })
+  // タブ作成後の登録で追加する情報
+  chrome.storage.session.set({
+    "viewerTab:<tabId>": "<id>", // タブ閉じ時の掃除用
+    "viewerRefs:<id>": number[]  // 同じ一覧を参照するタブID
   })
 
 background → viewer:
@@ -185,7 +135,6 @@ viewer:
 - session の容量制限により、**画像保存上限は「最大 1500 件」** とする（超過分は先頭 1500 件のみ保存し、viewer に通知）
 - 保存失敗時は fallback として viewer へメッセージで一覧を渡す（`delivery=fallback`）。この場合 F5 では消えることがある
 - 抽出スクリプトの注入・実行に失敗した場合は、エラー表示用の viewer を開く
-- SPA で画像が増え続ける場合は収集を打ち切る（未実装）
 
 ---
 
@@ -226,64 +175,30 @@ viewer:
 
 権限はアイコン押下時の一時アクセス（`activeTab`）、画像抽出処理の注入（`scripting`）、画像一覧・参照情報・言語設定の保存（`storage`）に限定する。タブIDでの管理に `tabs` 権限は不要。全サイトへの `host_permissions` は要求しない。
 
-抽出スクリプトは `scripting.executeScript` で注入するため、`web_accessible_resources` として外部ページへ公開しない。将来のDOM監視もアイコン押下後の元ページ内で開始する範囲では、この権限構成を使用する。
+抽出スクリプトは `scripting.executeScript` で注入するため、`web_accessible_resources` として外部ページへ公開しない。将来のDOM監視は未実装のため、導入時に権限と監視終了条件を改めて確認する。
 
 ---
 
-## 大量画像サイトへの対策
+## 現在の表示負荷への対応
 
-- 画像収集は **逐次処理（バッチ処理）**
-- content script は **MutationObserver + debounce**
-- 重複判定は content script 側で事前に行う
-- CORS により naturalWidth が取得できないケースを許容
+- content scriptとbackgroundでURLの重複を除き、保存・表示するURLは最大1500件に制限する。
+- Viewerでは各画像の読み込み成功・失敗に応じてフィルターと件数を再評価する。
+- Lazy Load、一覧の仮想化、継続収集のバッチ処理による負荷対策は未実装。必要性の確認と実装候補は [TODO.md](TODO.md) で管理する。
 
----
+## 寄付リンク
 
-## バージョン構成（v1 / v2 / v3）
+- 機能は無料で利用でき、任意のKo-fi寄付リンクをViewer右上に置く。
+- 公式ボタン画像は拡張に同梱し、外部のウィジェットスクリプトは実行しない。
+- ボタンはKo-fiの支援ページを別タブで開く。
+- Pro版や広告は実装していない。導入の是非は [TODO.md](TODO.md) の検討候補であり、機能制限の予定は確定していない。
 
-### ● v1（初期リリース）
+## ブラウザー・配信元による制限
 
-- 画像収集
-- 読み込み失敗除外
+- Chromeがスクリプト注入を許可しないページでは抽出できない。
+- アイコンを押した時点でDOMや適用済みスタイルから参照できる画像が対象で、SPA内部の状態を継続監視しない。
+- Viewerでの画像表示には配信元への通信が発生する。配信元の制限などで読み込めない場合は、自然サイズも取得できず一覧から除外する。
+- URLの拡張子と実際の画像形式が一致することは保証しない。
 
-### ● v2（機能拡張）
+## 今後の機能候補
 
-- Zip ダウンロード
-- 画像再試行
-- ソート機能（サイズ順など）
-
-### ● v3（高度機能）
-
-- メタ情報表示
-- 重複判定強化（ハッシュ一致）
-- ダークモード
-- Pro版 / 広告 / 寄付
-
----
-
-## 収益化（Optional）
-
-### ● バナー広告（viewer 下部）
-
-- 高さ 40〜60px
-- 操作の邪魔にならない位置
-- AdSense / Buy Me a Coffee など
-
-### ● 寄付ボタン
-
-- 強制文言は使用しない
-
-### ● Pro版誘導
-
-- Zip / ソート / 高度機能を Pro版化
-
----
-
-## ブラウザ制約（重要）
-
-- CSSOM は cross-origin stylesheet の cssRules を参照不可
-- MutationObserver は SPA の内部状態変化を完全に捕捉できない場合がある
-- CORS により naturalWidth / naturalHeight が取得できないケースがある
-- CSS 画像の完全抽出は保証されない
-
----
+継続収集、抽出対象の追加、表示負荷改善、ZIPダウンロード、再試行、ソートなどの優先度・検討内容は [TODO.md](TODO.md) に集約する。本書の実装済み仕様には含めない。
