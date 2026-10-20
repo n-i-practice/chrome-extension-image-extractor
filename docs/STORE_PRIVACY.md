@@ -49,7 +49,7 @@
 ## 公開前に確定する事項
 
 - [ ] 日本語ポリシー本文を確認する。
-- [ ] 問い合わせ先として、既存の `package.json` の `bugs.url` にあるGitHub Issuesを使用してよいか確認する。現在のポリシー案ではこのURLを仮採用している。
+- [x] 問い合わせ先を [GitHub Issues](https://github.com/n-i-practice/chrome-extension-image-extractor/issues) に確定する（2026-10-20）。READMEとプライバシーポリシー案にも反映済み。
 - [ ] 誰でもログインなしで読める公開先を決める。公開リポジトリ上のMarkdownやGitHub Pagesなどを候補とする。
 - [ ] 公開した本文をログアウト状態で確認し、その実在するURLをストアへ登録する。まだ公開URLは確定していない。
 - [ ] 公開時にポリシーの「案」と確認用の冒頭文を外し、公開・更新日を確定する。

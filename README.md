@@ -156,6 +156,12 @@ dist/                       Chromeに読み込むビルド成果物
 - [全体仕様](docs/SPECIFICATION.md)
 - [多言語対応の記録](docs/i18n-TODO.md)
 
+## お問い合わせ・不具合報告
+
+お問い合わせ・不具合報告は、プロジェクトの [GitHub Issues](https://github.com/n-i-practice/chrome-extension-image-extractor/issues) へお願いします。データの取扱いに関するお問い合わせも、同じ窓口で受け付けます。
+
+投稿にはGitHubアカウントが必要です。投稿内容は公開されるため、個人情報・認証情報・非公開ページのURLや画像を含めないでください。不具合報告には、Chromeと拡張のバージョン、再現手順、期待した動作と実際の動作を、公開できる範囲で記載してください。
+
 ## 開発への支援
 
 機能は無料で利用できます。任意で開発を支援したい方は [Ko-fi](https://ko-fi.com/F8U228LZP5) から支援できます。Viewer右上にも公式画像ボタンを設置しています。
