@@ -167,7 +167,7 @@
 - [x] 不要な権限・リソース公開設定を削除する。`tabs`・全サイトへの `host_permissions`・抽出スクリプトの `web_accessible_resources` を削除し、`activeTab`・`scripting`・`storage` の3権限に限定した。
 - [x] 権限削減後のChrome実機確認（抽出・同じページでの再抽出・別ドメイン画像の表示・Viewerの複製と終了）。2026-10-14に全4項目をユーザー確認済み。詳細は [TESTING.md](TESTING.md) を参照。
 - [x] 拡張アイコンを用意し、`manifest.json` と配布ビルドに組み込む。採用した写真フレーム1枚の画像から16・24・32・48・128pxの透過PNGを作成し、ビルド時に `dist/icons/` へ同梱する。 Chromeでの表示は2026-10-14にユーザー確認済み。
-- [ ] ストア掲載素材を用意する。紹介画像（440×280）、一覧・拡大表示を伝えるスクリーンショット（1280×800または640×400）、日本語・英語の説明文を作成する。説明は実装済み機能に合わせる。画像要件は [Chrome公式案内](https://developer.chrome.com/docs/webstore/images) を参照。
+- [ ] ストア掲載素材を用意する。[日英の説明文案](STORE_LISTING.md) と [素材構成案](STORE_ASSETS.md) を作成済み（2026-10-20）。[紹介画像の初版と撮影用ギャラリー](../assets/store/README.md)を作成済み（2026-10-21）。ユーザーによる実機撮影済み。一覧は日英各1枚、拡大・原寸は共通各1枚のJPEG（1280×800）に整理した。スクリーンショットは現状の画像を採用する方針でユーザー確認済み。残りは文案・紹介画像の最終確認。画像要件は [Chrome公式案内](https://developer.chrome.com/docs/webstore/images) を参照。
 - [ ] プライバシー説明を用意し、公開URLとストアのデータ取扱い申告を整える。日本語の [ポリシー案](PRIVACY.md) と [ストア申告用メモ](STORE_PRIVACY.md) を作成済み（2026-10-16）。問い合わせ先はGitHub Issuesに確定（2026-10-20）。本文の確認、公開先URLの確定と公開、ストアへの申告は未完了。
 - [x] 問い合わせ・不具合報告先を [GitHub Issues](https://github.com/n-i-practice/chrome-extension-image-extractor/issues) に決定し、READMEとプライバシーポリシー案に反映する（2026-10-20）。
 - [ ] ストア掲載情報の問い合わせ・不具合報告先に、同じGitHub IssuesのURLを記載する。
