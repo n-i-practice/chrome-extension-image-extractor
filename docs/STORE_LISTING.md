@@ -6,13 +6,14 @@
 
 - 名前：Image Extractor
 - サポートURL：https://github.com/n-i-practice/chrome-extension-image-extractor/issues
-- プライバシーポリシーURL：公開後に登録する。現在は未確定。
+- プライバシーポリシーURL（日本語）：https://github.com/n-i-practice/chrome-extension-image-extractor/blob/main/docs/PRIVACY.md
+- プライバシーポリシーURL（英語）：https://github.com/n-i-practice/chrome-extension-image-extractor/blob/main/docs/PRIVACY.en.md
 
 ## 日本語
 
 ### 短い説明
 
-Webページの画像を別タブに一覧表示。サイズや拡張子で絞り込み、拡大・原寸表示で確認できます。
+Webページの画像を別タブに一覧表示。サイズで絞り込み、SVG・GIFを非表示にして、拡大・原寸表示で確認できます。
 
 ### 詳細説明
 
@@ -42,9 +43,13 @@ Image Extractorは、開いているWebページの画像を別タブにまと�
 
 配信元の制限などにより表示できない画像があります。Chromeの内部ページなどでは抽出できません。SVG・GIFの絞り込みはURLの拡張子を基準にします。画像の一括ダウンロード機能はありません。
 
+canvasに描画された内容、Shadow DOM内部の画像、通信上だけに現れて画像要素やCSS背景画像から参照できない画像URLは、抽出対象外です。
+
 データと利用料金
 
-画像URLと一覧管理用の情報はブラウザー内に一時保存します。同じ一覧の最後のViewerタブを閉じるか、ブラウザーを終了すると削除されます。画像表示時は画像の配信元へ通信します。開発者のサーバーへ画像URLや利用状況を送信する機能はありません。
+画像URLと一覧管理用の情報はブラウザー内のセッション用ストレージに一時保存し、同じ一覧の最後のViewerタブを閉じた際に削除処理を行います。削除の失敗や処理の中断などで残った一時データも、ブラウザーを終了して再起動すると消去されます。画像表示時は画像の配信元へ通信します。開発者のサーバーへ画像URLや利用状況を送信する機能はありません。
+
+プライバシーポリシー：https://github.com/n-i-practice/chrome-extension-image-extractor/blob/main/docs/PRIVACY.md
 
 機能は無料で利用できます。任意のKo-fi支援ボタンがありますが、支援の有無による機能制限はありません。
 
@@ -58,7 +63,7 @@ https://github.com/n-i-practice/chrome-extension-image-extractor/issues
 
 ### Short description
 
-View images from a web page in a new tab. Filter by size or file extension, then inspect images in a larger view or at full size.
+View page images in a new tab. Filter by size, hide SVG and GIF images, and inspect images in a larger view or at original size.
 
 ### Detailed description
 
@@ -88,9 +93,13 @@ Extraction uses the images present in the page when you click the icon. For imag
 
 Some images may not display because of restrictions imposed by their host. Extraction is unavailable on Chrome internal pages and other restricted pages. SVG and GIF filters use the file extension in the URL. Bulk image downloading is not included.
 
+Canvas drawings, images inside Shadow DOM, and image URLs that appear only in network traffic without being exposed through image elements or CSS background images are outside the scope of extraction.
+
 Data and pricing
 
-Image URLs and list management data are stored temporarily in your browser. They are deleted when you close the last viewer tab for that list or exit the browser. Displaying images sends requests to their image hosts. The extension has no feature that sends image URLs or usage analytics to the developer's server.
+Image URLs and list management data are stored temporarily in the browser's session storage for the extension. The extension performs deletion when you close the last viewer tab for that list. If temporary data remains because deletion fails, processing is interrupted, or a similar issue occurs, it is cleared when the browser exits and restarts. Displaying images sends requests to their image hosts. The extension has no feature that sends image URLs or usage analytics to the developer's server.
+
+Privacy policy: https://github.com/n-i-practice/chrome-extension-image-extractor/blob/main/docs/PRIVACY.en.md
 
 All features are free to use. An optional Ko-fi support button is available, with no feature restrictions based on whether you contribute.
 
