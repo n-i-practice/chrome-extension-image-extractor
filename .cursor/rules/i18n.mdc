@@ -25,4 +25,4 @@ alwaysApply: true
 
 - 実装: `src/i18n/`
 - locale 決定: 保存設定 → ブラウザ言語 → `en`
-- 詳細メモ: `docs/i18n-TODO.md`
+- 現行仕様: `docs/SPECIFICATION.md` の「多言語対応」

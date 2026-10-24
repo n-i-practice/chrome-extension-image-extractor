@@ -39,6 +39,7 @@ Webページ内の画像を抽出し、別タブの一覧でまとめて確認�
 
 - 抽出はアイコンを押した時点のDOMが対象です。スクロールなどで後から追加された画像を自動収集する機能は未実装です。元ページで画像を読み込ませた後、再度アイコンを押すと新しい一覧を開きます。
 - `<meta property="og:image">`、`<video poster>`、CSS `content: url()` の抽出は未実装です。
+- canvasの描画内容、Shadow DOM内部の画像、通信上だけに現れる画像URLは抽出対象外です。
 - URLが完全一致した画像を重複除外します。クエリが異なるURLや、別URLで配信される同じ画像は別件として扱います。
 - 一覧に保存する画像URLは最大1500件です。超過時は先頭1500件を表示し、通知を出します。
 - 拡張子はURLのファイル名から判定します。拡張子のないURLや `blob:` / `data:` URLは「—」と表示し、実際の画像形式は判別しません。SVG / GIFフィルターもURLの拡張子を基準にします。
@@ -154,7 +155,7 @@ dist/                       Chromeに読み込むビルド成果物
 - [テスト手順と確認記録](docs/TESTING.md)
 - [Viewer仕様](docs/VIEWER_SPEC.md)
 - [全体仕様](docs/SPECIFICATION.md)
-- [多言語対応の記録](docs/i18n-TODO.md)
+- [プライバシーポリシー](docs/PRIVACY.md) / [English](docs/PRIVACY.en.md)
 
 ## お問い合わせ・不具合報告
 
