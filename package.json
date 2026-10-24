@@ -2,7 +2,6 @@
   "name": "chrome-extension-image-extractor",
   "version": "1.0.0",
   "description": "Webページ内の画像を抽出し、別タブの一覧・拡大・原寸表示で確認できるChrome拡張。",
-  "main": "index.js",
   "directories": {
     "doc": "docs",
     "test": "test"

@@ -4,7 +4,6 @@
 
 - `promo/promo-v2-440x280.png`：提出用の紹介画像。440×280px、RGB PNG。Webサイト→画像一覧→拡大表示の構成。
 - `promo/promo-v2-source.png`：v2の生成元。
-- `promo/promo-440x280.png`・`promo/promo-source.png`：比較用の旧版。提出には使用しない。
 - `demo/alpine-lake.jpg`：拡大・原寸確認用のAI生成風景。1536×1024px。
 - `demo/*.svg`：独自図形7点。透明部分と小サイズの確認用を含む。
 - `demo/index.html`：8枚の画像を並べた撮影用ギャラリー。
